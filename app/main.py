@@ -8,7 +8,9 @@ import shutil
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import openpyxl
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -33,6 +35,24 @@ app.add_middleware(
     https_only=os.environ.get("COOKIE_SECURE", "1") == "1",
 )
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+_LONDON = ZoneInfo("Europe/London")
+
+
+def _nice_date(v, with_time=False):
+    """'2026-10-16' -> '16 Oct 2026'; ISO timestamps are shown in UK time."""
+    if not v:
+        return ""
+    try:
+        d = datetime.fromisoformat(str(v))
+    except ValueError:
+        return v
+    if d.tzinfo:
+        d = d.astimezone(_LONDON)
+    out = f"{d.day} {d:%b %Y}"
+    return out + (f" at {d:%H:%M}" if with_time else "")
+
+
+templates.env.filters["nice_date"] = _nice_date
 pool = ThreadPoolExecutor(max_workers=2)
 progress: dict[str, dict] = {}
 _fails: dict[str, list[float]] = defaultdict(list)

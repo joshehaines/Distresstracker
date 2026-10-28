@@ -1,18 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Sign in · {{ app_name }}{% endblock %}
+{% block head %}<style>
+.auth{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:start;margin-top:48px}
+.auth h1{font-size:clamp(32px,5vw,52px);margin-top:0;max-width:14ch}
+.auth .how{list-style:none;padding:0;margin:28px 0 0;border-top:1px solid var(--rule)}
+.auth .how li{padding:12px 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:28px 1fr;color:var(--muted)}
+.auth .how b{color:var(--ink);font-weight:700}
+@media (max-width:820px){.auth{grid-template-columns:1fr;gap:28px;margin-top:20px}}
+</style>{% endblock %}
 {% block body %}
-<div style="max-width:380px;margin:40px auto">
-  <h1>Sign in</h1>
-  <p class="lead">Access is by invitation.</p>
-  {% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
-  <form class="card" method="post" action="/login">
-    <input type="hidden" name="csrf_token" value="{{ csrf }}">
-    <label for="email">Email</label>
-    <input id="email" name="email" type="email" autocomplete="username" required value="{{ email or '' }}">
-    <label for="password">Password</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required>
-    <div style="margin-top:18px"><button class="btn">Sign in</button></div>
-  </form>
-  <p class="note" style="margin-top:14px">Forgotten your password? Ask your administrator for a reset link.</p>
+<div class="auth">
+  <section>
+    <h1>Caseboard alerts in. CCO workbook out.</h1>
+    <p class="lede">Upload the daily alert PDF. Every case is extracted and each company is checked against Companies House and the Gazette.</p>
+    <ol class="how">
+      <li><b>1</b>Upload the alert PDF</li>
+      <li><b>2</b>Companies House supplies SIC codes and charge holders</li>
+      <li><b>3</b>Download the workbook in the team template</li>
+    </ol>
+  </section>
+  <section>
+    {% if error %}<div class="notice bad">{{ error }}</div>{% endif %}
+    <form class="sheet pad" method="post" action="/login">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <h2 style="margin-top:0">Sign in</h2>
+      <label for="email">Work email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required value="{{ email or '' }}">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <div style="margin-top:22px"><button class="btn" style="width:100%">Sign in</button></div>
+      <p class="small" style="margin:16px 0 0">Access is by invitation. For a new account or a password reset, ask your team admin.</p>
+    </form>
+  </section>
 </div>
 {% endblock %}

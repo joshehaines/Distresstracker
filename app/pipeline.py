@@ -3,7 +3,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .companies_house import NA, PENDING, VERIFIED, enrich
+import os
+
+import httpx
+
+from .companies_house import API, NA, PENDING, VERIFIED, enrich
+from .extra import enrich_extra
 from .extract import extract
 from .workbook import build_rows, validate, write_register, write_workbook
 
@@ -22,7 +27,13 @@ def run(pdf: str | Path, template: str | Path, out_dir: str | Path, api_key: str
     lookups = enrich(cases, api_key=api_key, progress=progress)
     if callable(history):
         history = history([lk.company_number for lk in lookups.values()])
-    rows = build_rows(cases, lookups, history)
+    history = history or {}
+    if progress:
+        progress(0, 0, type("C", (), {"subject_name": "Checking Gazette, insolvency history and premises"})())
+    key = api_key or os.environ.get("CH_API_KEY")
+    with httpx.Client(base_url=API, auth=(key, ""), timeout=20) as chc:
+        extras = enrich_extra(cases, lookups, history, chc)
+    rows = build_rows(cases, lookups, extras)
 
     date_tag = ex["alert_date"] or "undated"
     xlsx = out_dir / f"Case Alerts {date_tag}.xlsx"
@@ -52,6 +63,16 @@ def run(pdf: str | Path, template: str | Path, out_dir: str | Path, api_key: str
         "validation_failures": fails,
         "xlsx": str(xlsx),
         "register": str(register),
+        "rows": [{
+            "ref": c.case_ref, "subject": c.subject_name, "kind": c.subject_type,
+            "filing": c.filing_type, "petitioner": c.petitioner,
+            "number": lookups[c.case_ref].company_number or "",
+            "status": lookups[c.case_ref].status,
+            "sic": row["values"][4] or "", "sic_desc": row["values"][5] or "",
+            "multiple": row["values"][6] or "", "postcode": row["values"][7] or "",
+            "trading": row["values"][8] or "", "charges": row["values"][9] or "",
+            "notes": row["values"][12] or "",
+        } for c, row in zip(cases, rows)],
         "company_numbers": {c.case_ref: lookups[c.case_ref].company_number for c in cases
                             if lookups[c.case_ref].company_number},
     }

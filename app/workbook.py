@@ -18,9 +18,9 @@ HEADERS = [
 ]
 
 
-def build_rows(cases, lookups: dict[str, Lookup], history: dict[str, list[str]] | None = None):
-    """history: company_number -> earlier case refs (from previous runs)."""
-    history = history or {}
+def build_rows(cases, lookups: dict[str, Lookup], extras: dict | None = None):
+    """extras: case_ref -> Extra (columns G/H/I evidence)."""
+    extras = extras or {}
     by_number: dict[str, list[str]] = {}
     for c in cases:
         lk = lookups[c.case_ref]
@@ -46,14 +46,19 @@ def build_rows(cases, lookups: dict[str, Lookup], history: dict[str, list[str]] 
             notes.append(f"SIC {lk.status}: {lk.reason.rstrip('. ')}.")
         notes.extend(c.notes)
 
-        multiple = ""
+        ex = extras.get(c.case_ref)
+        multiple = ex.multiple if ex else ""
+        g_notes = list(ex.multiple_notes) if ex else []
         if lk.company_number:
             same_run = [r for r in by_number.get(lk.company_number, []) if r != c.case_ref]
-            earlier = [r for r in history.get(lk.company_number, []) if r != c.case_ref]
-            others = same_run + earlier
-            if others:
+            if same_run:
                 multiple = "Yes"
-                notes.append("Other filings: " + ", ".join(dict.fromkeys(others)) + ".")
+                g_notes = [n for n in g_notes if not n.startswith("No earlier")]
+                g_notes.insert(0, "same alert also lists " + ", ".join(same_run))
+        if g_notes:
+            notes.append(("Multiple filings: " if multiple == "Yes" else "") + "; ".join(g_notes) + ".")
+        if ex and ex.premises_note:
+            notes.append(ex.premises_note)
 
         charge = ""
         if lk.charge_status == VERIFIED:
@@ -78,8 +83,8 @@ def build_rows(cases, lookups: dict[str, Lookup], history: dict[str, list[str]] 
                 ";".join(lk.sic_codes) or None,
                 ";".join(lk.sic_descriptions) or None,
                 multiple or None,
-                None,               # Property Postcode: not auto-verifiable
-                None,               # Trading Name
+                (ex.postcode or None) if ex else None,       # FSA register, strict match only
+                (ex.trading_name or None) if ex else None,
                 charge or None,
                 None,               # Property ID (IBIS)
                 None,               # Property name
@@ -181,9 +186,13 @@ def validate(out: str | Path, template: str | Path, template_mtime: float, cases
         else:
             if not e and not (vals[12] or "").strip():
                 fails.append(f"Row {i}: unidentified subject without explanation")
-        for k in (7, 8, 10, 11, 13):
+        for k in (10, 11, 13):
             if vals[k] is not None:
                 fails.append(f"Row {i}: unverifiable column {HEADERS[k]} populated")
+        if (vals[7] or vals[8]) and "FSA hygiene register" not in (vals[12] or ""):
+            fails.append(f"Row {i}: postcode/trading name without a recorded source")
+        if vals[6] not in (None, "Yes", "No"):
+            fails.append(f"Row {i}: Multiple Caseboard Filings must be Yes, No or blank")
 
     if Path(template).stat().st_mtime != template_mtime:
         fails.append("Template file was modified")
