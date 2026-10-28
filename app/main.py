@@ -83,6 +83,20 @@ def startup():
             path = f"/invite/{token}"
             (db.DATA / "setup-link.txt").write_text((BASE_URL or "") + path + "\n")
             print(f"ADMIN SETUP LINK: {(BASE_URL or '')}{path}", flush=True)
+    # Invites requested by the owner through the INVITE_EMAILS setting (comma separated).
+    # Each gets one stable link, logged at start-up, until it is used or expires.
+    admin = db.user_by_email(email) if email else None
+    tokens_dir = db.DATA / "invite-tokens"
+    tokens_dir.mkdir(exist_ok=True)
+    for addr in [a.strip().lower() for a in os.environ.get("INVITE_EMAILS", "").split(",") if a.strip()]:
+        if db.user_by_email(addr):
+            continue
+        f = tokens_dir / addr
+        token = f.read_text().strip() if f.exists() else ""
+        if not token or not db.get_invite(token):
+            token = db.make_invite(addr, admin["id"] if admin else 0, kind="invite", days=7)
+            f.write_text(token)
+        print(f"INVITE LINK {addr}: {(BASE_URL or '')}/invite/{token}", flush=True)
     # runs interrupted by a restart
     for r in db.list_runs(limit=1000):
         if r["status"] in ("queued", "running"):
