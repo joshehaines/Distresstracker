@@ -13,8 +13,10 @@ from datetime import date, datetime
 
 import pdfplumber
 
-CASE_REF = re.compile(r"^((?:BR|CR|IL|CH|BL|HC|PT)-\d{4}-(?:[A-Z]{3}-)?\d{6})\b(.*)$")
-CASE_REF_ANY = re.compile(r"\b(?:BR|CR|IL|CH|BL|HC|PT)-\d{4}-(?:[A-Z]{3}-)?\d{6}\b")
+# Any Caseboard-style reference: 2-4 letter list code, year, optional court code, number.
+# e.g. CR-2026-007806, BR-2026-000904, CR-2026-MAN-001486, IL-2026-000012, HC-2026-LDS-000001
+CASE_REF = re.compile(r"^([A-Z]{2,4}-(?:19|20)\d{2}-(?:[A-Z]{2,5}-)?\d{3,7})\b(.*)$")
+CASE_REF_ANY = re.compile(r"\b[A-Z]{2,4}-(?:19|20)\d{2}-(?:[A-Z]{2,5}-)?\d{3,7}\b")
 FILED = re.compile(r"^Filed:\s*(\d{2}-\d{2}-\d{4})")
 ALERT_DATE = re.compile(r"Case alerts for (\d{2}-\d{2}-\d{4})")
 PARTY_LABELS = (
@@ -264,6 +266,10 @@ def extract(pdf_path: str) -> dict:
     dupes = sorted({r for r in parsed_refs if parsed_refs.count(r) > 1})
 
     problems = []
+    # independent cross-check: every case block carries a "Filed:" line
+    filed_lines = sum(1 for _, l in lines if FILED.match(l))
+    if filed_lines != len(cases):
+        problems.append(f"{filed_lines} 'Filed:' lines in the PDF but {len(cases)} cases parsed")
     if set(parsed_refs) != set(distinct_raw):
         problems.append(f"Parsed refs differ from raw scan: missing={sorted(set(distinct_raw)-set(parsed_refs))}")
     for c in cases:
@@ -278,7 +284,7 @@ def extract(pdf_path: str) -> dict:
         "alert_date": alert_date,
         "page_count": page_count,
         "pages_with_text": len({p for p, _ in lines}),
-        "raw_ref_count": len(distinct_raw),
+        "raw_ref_count": max(len(distinct_raw), filed_lines),
         "duplicate_refs": dupes,
         "problems": problems,
         "cases": cases,
