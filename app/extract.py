@@ -34,17 +34,18 @@ COMPANY_WORDS = re.compile(
     re.I,
 )
 # company number forms seen in Caseboard headings
+# Any bracketed note that carries a company number, e.g. "(10049712)", "(CRN: 08120039)",
+# "(CRN.11855926)", "(Company is 07842234)", "(The registered number of the Company is 12017348 )"
 CRN_PATTERNS = [
-    re.compile(r"\(\s*The registered number of the Company\s+is\s+([A-Z]{0,2}\d{6,8})\s*\)", re.I),
-    re.compile(r"\(\s*CRN[:.\s]*([A-Z]{0,2}\d{6,8})\s*\)", re.I),
-    re.compile(r"\(\s*(?:Company\s+(?:No\.?|Number)[:.\s]*)?([A-Z]{2}\d{6}|\d{7,8})\s*\)", re.I),
+    re.compile(r"\(\s*[^()]*?(?<![A-Z0-9])((?:[A-Z]{2})?\d{6,8})(?![0-9])[^()]*\)", re.I),
 ]
+LEADING_FORMULA = re.compile(r"^\s*(?:in\s+the\s+matter\s+of\s+(?:the\s+)?|re[:\s]+)", re.I)
 STATUS_SUFFIX = re.compile(
     r"\s*\((?:in\s+(?:creditors'?\s+voluntary\s+)?(?:liquidation|lioui?dation|administration|"
     r"receivership|members'?\s+voluntary\s+liquidation))\)\s*",
     re.I,
 )
-AND_OTHERS = re.compile(r"\s+and\s+others\s*$", re.I)
+AND_OTHERS = re.compile(r"\s+(?:and|&)\s+others\s*$", re.I)
 SOLICITOR = re.compile(r"\s*\[[^\]]*\]\s*")
 
 
@@ -173,7 +174,7 @@ def _derive(c: Case) -> None:
         c.notes.append("Alert names this subject 'and others'; unnamed parties not expanded.")
     c.subject_name = re.sub(r"\s{2,}", " ", heading).strip()
 
-    search = AND_OTHERS.sub("", c.subject_name)
+    search = LEADING_FORMULA.sub("", AND_OTHERS.sub("", c.subject_name))
     search = STATUS_SUFFIX.sub(" ", search).strip()
     c.search_name = re.sub(r"\s{2,}", " ", search)
 
@@ -201,7 +202,7 @@ def _derive(c: Case) -> None:
             if p.role == "Applicant" and p.name.lower() == c.search_name.lower():
                 c.notes.append("Applicant: the company itself.")
                 continue
-            c.notes.append(f"{p.role}: {_display(p.name).strip()}.")
+            c.notes.append(f"{p.role}: {_display(p.name).strip().rstrip('.')}.")
 
 
 def extract(pdf_path: str) -> dict:

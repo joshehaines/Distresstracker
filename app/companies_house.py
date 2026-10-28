@@ -151,6 +151,11 @@ class CompaniesHouse:
         if alt != search_name:
             variants.append(alt)
         no_the = re.sub(r"^the\s+", "", search_name, flags=re.I)
+        # Alerts sometimes drop the "Limited" suffix; also accept the name with it added.
+        targets = [search_name]
+        if not re.search(r"\b(limited|ltd\.?|llp|plc|lp|cic|cio|unlimited|cyf|cyfyngedig)\s*$", search_name, re.I):
+            targets.append(search_name + " Limited")
+            variants.append(search_name + " Limited")
 
         any_ok = False
         cands: list[dict] = []
@@ -164,7 +169,9 @@ class CompaniesHouse:
             if items is None:
                 continue
             any_ok = True
-            cands = self._exact(items, search_name)
+            cands = []
+            for t in targets:
+                cands += [x for x in self._exact(items, t) if x not in cands]
             if cands:
                 break
 
@@ -221,7 +228,11 @@ class CompaniesHouse:
                                for c in codes]
         lk.status = VERIFIED
         if not codes:
-            lk.reason = (lk.reason + " " if lk.reason else "") + "Verified profile lists no SIC codes."
+            num = (lk.company_number or "").upper()
+            why = ("LLPs do not report SIC codes to Companies House." if num[:2] in ("OC", "SO", "NC") else
+                   "Overseas entity; Companies House holds no SIC codes for it." if num[:2] in ("FC", "BR", "OE", "SF", "NF") else
+                   "The Companies House record lists no SIC codes.")
+            lk.reason = (lk.reason + " " if lk.reason else "") + why
 
     # ---- charges ----------------------------------------------------------
     def charges(self, lk: Lookup) -> None:
