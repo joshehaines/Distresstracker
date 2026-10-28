@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{% if reset %}Reset password{% else %}Create account{% endif %} · {{ app_name }}{% endblock %}
+{% block body %}
+<div style="max-width:380px;margin:40px auto">
+  <h1>{% if reset %}Set a new password{% else %}Create your account{% endif %}</h1>
+  <p class="lead">For {{ inv.email }}</p>
+  {% if error %}<div class="alert bad">{{ error }}</div>{% endif %}
+  <form class="card" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    {% if not reset %}
+    <label for="name">Your name</label>
+    <input id="name" name="name" type="text" autocomplete="name" required value="{{ name or '' }}">
+    {% endif %}
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required>
+    <label for="password2">Confirm password</label>
+    <input id="password2" name="password2" type="password" autocomplete="new-password" minlength="10" required>
+    <p class="note">At least 10 characters.</p>
+    <button class="btn">{% if reset %}Save password{% else %}Create account{% endif %}</button>
+  </form>
+</div>
+{% endblock %}

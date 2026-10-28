@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Process a case alert</h1>
+<p class="lead">Upload the Caseboard alert PDF. Every case is extracted, companies are checked against Companies House, and you get the workbook in the CCO template.</p>
+
+{% if not ch_ready %}<div class="alert warn">The Companies House API key isn't configured yet, so runs are paused.</div>{% endif %}
+{% if not template_ready %}<div class="alert warn">No master template yet{% if user.is_admin %} — add it under <a href="/admin">Admin</a>{% else %}. Ask your administrator to add it, or attach one below{% endif %}.</div>{% endif %}
+
+<form class="card" method="post" action="/runs" enctype="multipart/form-data" id="up">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label for="pdf">Case alert PDF</label>
+  <input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required>
+  <details style="margin-top:14px">
+    <summary class="note" style="cursor:pointer">Use a different template for this run</summary>
+    <label for="template">Template (.xlsx, Sheet1 with the standard A–N headers)</label>
+    <input id="template" name="template" type="file" accept=".xlsx">
+  </details>
+  <div style="margin-top:18px"><button class="btn" id="go">Process alert</button></div>
+</form>
+<script>document.getElementById('up').addEventListener('submit',function(){var b=document.getElementById('go');b.disabled=true;b.textContent='Uploading…'});</script>
+
+<h2>{% if user.is_admin %}All recent runs{% else %}Your recent runs{% endif %}</h2>
+{% if runs %}
+<div class="card scroll" style="padding:4px 12px">
+<table>
+  <thead><tr><th>Alert</th><th>Status</th><th>Records</th><th class="hide">SIC verified</th>{% if user.is_admin %}<th class="hide">By</th>{% endif %}</tr></thead>
+  <tbody>
+  {% for r in runs %}
+  <tr>
+    <td><a href="/runs/{{ r.id }}">{{ r.alert_date or r.pdf_name }}</a><div class="note">{{ r.created[:16].replace('T',' ') }}</div></td>
+    <td><span class="tag {{ r.status }}">{{ r.status }}</span></td>
+    <td>{{ r.s.records if r.s else '–' }}</td>
+    <td class="hide">{% if r.s %}{{ r.s.sic_verified }} / {{ r.s.companies }}{% else %}–{% endif %}</td>
+    {% if user.is_admin %}<td class="hide">{{ r.user_name }}</td>{% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="note">No runs yet.</p>
+{% endif %}
+{% endblock %}

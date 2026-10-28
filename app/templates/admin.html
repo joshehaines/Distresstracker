@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ app_name }}{% endblock %}
+{% block body %}
+<h1>Admin</h1>
+<p class="lead">Invite people, manage access and set the master template.</p>
+{% if notice %}<div class="alert {{ 'bad' if 'rejected' in notice or "can't" in notice else 'ok' }}">{{ notice }}</div>{% endif %}
+
+{% if new_link %}
+<div class="alert ok">
+  <b>{{ new_link.kind|capitalize }} link for {{ new_link.email }}</b> — send it to them. It works once{% if new_link.kind == 'invite' %} and expires in 7 days{% else %} and expires in 2 days{% endif %}.<br>
+  <code id="nl">{{ new_link.url }}</code>
+  <button class="btn small secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('nl').textContent);this.textContent='Copied'">Copy</button>
+</div>
+{% endif %}
+
+<h2>Invite someone</h2>
+<form class="card row" method="post" action="/admin/invite">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <input name="email" type="email" placeholder="name@company.com" required style="flex:1;min-width:220px">
+  <button class="btn">Create link</button>
+</form>
+<p class="note">Entering an existing user's email creates a password reset link instead.</p>
+
+{% if invites %}
+<h2>Open links</h2>
+<div class="card" style="padding:4px 12px">
+<table>
+  {% for i in invites %}
+  <tr><td>{{ i.email }}</td><td class="note">{{ i.kind }} · expires {{ i.expires[:10] }}</td>
+  <td style="text-align:right"><form method="post" action="/admin/invites/{{ i.rowid }}/revoke" style="margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn small secondary">Revoke</button></form></td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+<h2>Users</h2>
+<div class="card scroll" style="padding:4px 12px">
+<table>
+  <thead><tr><th>Name</th><th class="hide">Last sign-in</th><th>Role</th><th></th></tr></thead>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.name }}<div class="note">{{ u.email }}</div></td>
+    <td class="hide note">{{ (u.last_login or '–')[:16].replace('T',' ') }}</td>
+    <td>{% if not u.active %}<span class="tag failed">disabled</span>{% elif u.is_admin %}<span class="tag done">admin</span>{% else %}<span class="tag">user</span>{% endif %}</td>
+    <td style="text-align:right;white-space:nowrap">
+      {% if u.id != user.id %}
+      <form method="post" action="/admin/users/{{ u.id }}/{{ 'enable' if not u.active else 'disable' }}" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn small secondary">{{ 'Enable' if not u.active else 'Disable' }}</button></form>
+      <form method="post" action="/admin/users/{{ u.id }}/{{ 'remove-admin' if u.is_admin else 'make-admin' }}" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn small secondary">{{ 'Remove admin' if u.is_admin else 'Make admin' }}</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<h2>Master template</h2>
+<form class="card" method="post" action="/admin/template" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <p class="note" style="margin-top:0">{% if template_ready %}A template is in place (<a href="/admin/template">download current</a>). Uploading replaces it.{% else %}No template yet. Upload “Case Alerts - CCO sector companies.xlsx”.{% endif %} Sheet1 row 1 must hold the standard A–N headers; example rows are removed on every run, and the file itself is never modified.</p>
+  <div class="row"><input name="template" type="file" accept=".xlsx" required><button class="btn">Upload template</button></div>
+</form>
+
+<h2>Status</h2>
+<div class="card"><table>
+  <tr><th style="width:42%">Companies House API key</th><td>{{ 'Configured' if ch_ready else 'Missing — set CH_API_KEY on the server' }}</td></tr>
+</table></div>
+{% endblock %}
