@@ -73,9 +73,13 @@ def startup():
                           (email.strip().lower(), os.environ.get("ADMIN_NAME", "Administrator"), db.now()))
             u = db.user_by_email(email)
         if not u["pw_hash"]:
-            with db.conn() as c:
-                c.execute("UPDATE invites SET used='superseded' WHERE email=? AND used IS NULL", (u["email"],))
-            token = db.make_invite(u["email"], u["id"], kind="setup", days=2)
+            saved = db.DATA / "setup-token.txt"
+            token = saved.read_text().strip() if saved.exists() else ""
+            if not token or not db.get_invite(token):
+                with db.conn() as c:
+                    c.execute("UPDATE invites SET used='superseded' WHERE email=? AND used IS NULL", (u["email"],))
+                token = db.make_invite(u["email"], u["id"], kind="setup", days=2)
+                saved.write_text(token)
             path = f"/invite/{token}"
             (db.DATA / "setup-link.txt").write_text((BASE_URL or "") + path + "\n")
             print(f"ADMIN SETUP LINK: {(BASE_URL or '')}{path}", flush=True)
