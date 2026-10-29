@@ -15,23 +15,33 @@
 .upload details input{margin-top:8px}
 @media (max-width:760px){.upload{grid-template-columns:1fr}.upload .side{align-items:stretch}}
 
-.alerts{display:flex;flex-direction:column;gap:12px}
-.alert-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 24px;padding:16px 18px}
-.alert-row h3{margin:0;font-size:24px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}
-.alert-row h3 a{text-decoration:none}
-.alert-row h3 .pill{font-family:var(--font-ui);font-size:13px;letter-spacing:0}
-.alert-row h3 a:hover{text-decoration:underline;text-underline-offset:3px}
-.facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 18px;margin:8px 0 12px;font-size:14px}
+.alerts{padding:0;overflow:hidden}
+.alert{border-bottom:1px solid var(--line)}
+.alert:last-child{border-bottom:0}
+.alert summary{list-style:none;display:grid;grid-template-columns:16px minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:11px 16px;cursor:pointer}
+.alert summary::-webkit-details-marker{display:none}
+.alert summary:hover{background:var(--head)}
+.alert .chev{width:16px;height:16px;color:var(--muted);transition:transform .15s}
+.alert[open] .chev{transform:rotate(90deg)}
+.alert[open] summary{background:var(--head)}
+.alert .title{display:flex;align-items:center;gap:10px;min-width:0}
+.alert .title b{font-family:var(--font-brand);font-size:19px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert .nums{font-size:13px;color:var(--muted);white-space:nowrap}
+.alert .body{padding:4px 16px 16px 46px;background:var(--head);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:end}
+.facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 18px;margin:0 0 12px;font-size:14px}
 .facts dt{color:var(--muted)}
 .facts dd{margin:0}
 .quick{display:flex;flex-wrap:wrap;gap:8px}
-.quick .btn{font-weight:600}
 .badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:var(--radius);font-size:11.5px;font-weight:700;line-height:1;color:#fff}
-.badge.amber{background:var(--warn)}.badge.grey{background:var(--grey)}.badge.red{background:var(--bad)}.badge.green{background:var(--ok)}
-.alert-row .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
-.alert-row .side .btn{width:184px}
-.alert-row .stat{font-size:12.5px;color:var(--muted);line-height:1.5}
-@media (max-width:760px){.alert-row{grid-template-columns:1fr}.alert-row .side{align-items:flex-start;text-align:left}.alert-row .side .btn{width:100%}}
+.badge.amber{background:var(--warn)}.badge.grey{background:var(--grey)}.badge.red{background:var(--bad)}
+.dl{display:inline-flex;align-items:center;justify-content:center;width:34px;height:32px;border-radius:var(--radius);border:1px solid var(--line-strong);background:var(--surface);color:var(--accent)}
+.dl:hover{border-color:var(--accent);background:var(--accent-soft)}
+.dl svg{width:16px;height:16px}
+@media (max-width:760px){
+  .alert summary{grid-template-columns:16px minmax(0,1fr) auto;gap:10px;padding:11px 12px}
+  .alert .nums{display:none}
+  .alert .body{grid-template-columns:1fr;padding:4px 12px 14px 38px}
+}
 .empty{padding:36px 20px;text-align:center;color:var(--muted)}
 </style>{% endblock %}
 {% block body %}
@@ -76,41 +86,40 @@
 
 <h2 class="section">Recent alerts</h2>
 {% if runs %}
-<div class="alerts">
+<div class="card alerts">
 {% for r in runs %}{% set s = r.s %}
   {% set n_check = s.unresolved|length if s else 0 %}
   {% set n_multi = (s.rows|selectattr('multiple','equalto','Yes')|list|length) if s and s.rows else 0 %}
-  <article class="card alert-row">
-    <div>
-      <h3 class="display"><a href="/runs/{{ r.id }}">{% if r.alert_date %}Alert of {{ r.alert_date|nice_date }}{% else %}{{ r.pdf_name }}{% endif %}</a>
+  <details class="alert" {% if r.status in ('queued','running') %}open{% endif %}>
+    <summary>
+      <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>
+      <span class="title"><b>{% if r.alert_date %}Alert of {{ r.alert_date|nice_date }}{% else %}{{ r.pdf_name }}{% endif %}</b>
         {% if r.status == 'done' %}{% if s.validation_failures or not s.extraction_complete %}<span class="pill red">Check workbook</span>{% elif n_check %}<span class="pill amber">{{ n_check }} to check</span>{% else %}<span class="pill green">Complete</span>{% endif %}
-        {% elif r.status == 'failed' %}<span class="pill red">Failed</span>{% else %}<span class="pill blue">Processing</span>{% endif %}
-      </h3>
-      <dl class="facts">
-        <dt>Uploaded</dt><dd>{{ r.created|nice_date(True) }}{% if user.is_admin %} by {{ r.user_name }}{% endif %}</dd>
-        <dt>File</dt><dd>{{ r.pdf_name }}</dd>
-        {% if r.status == 'failed' %}<dt>Problem</dt><dd>{{ r.error|truncate(120) }}</dd>{% endif %}
-      </dl>
-      {% if r.status == 'done' %}
-      <div class="quick">
-        <a class="btn ghost sm" href="/runs/{{ r.id }}">Cases <span class="badge grey">{{ s.records }}</span></a>
-        {% if n_multi %}<a class="btn ghost sm" href="/runs/{{ r.id }}#multi">Earlier filings <span class="badge red">{{ n_multi }}</span></a>{% endif %}
-        {% if n_check %}<a class="btn ghost sm" href="/runs/{{ r.id }}#check">Needs checking <span class="badge amber">{{ n_check }}</span></a>{% endif %}
-        <a class="btn ghost sm" href="/runs/{{ r.id }}/download/register">Register CSV</a>
+        {% elif r.status == 'failed' %}<span class="pill red">Failed</span>{% else %}<span class="pill blue">Processing</span>{% endif %}</span>
+      <span class="nums">{% if r.status == 'done' %}{{ s.records }} cases · {{ s.sic_verified }}/{{ s.companies }} SIC{% if n_multi %} · {{ n_multi }} earlier filings{% endif %}{% else %}{{ r.created|nice_date }}{% endif %}</span>
+      {% if r.status == 'done' %}<a class="dl" href="/runs/{{ r.id }}/download/xlsx" title="Download workbook" aria-label="Download workbook for {{ r.alert_date|nice_date or r.pdf_name }}"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 2v8M4.5 7L8 10.5 11.5 7M3 13.5h10"/></svg></a>{% else %}<span></span>{% endif %}
+    </summary>
+    <div class="body">
+      <div>
+        <dl class="facts">
+          <dt>Uploaded</dt><dd>{{ r.created|nice_date(True) }}{% if user.is_admin %} by {{ r.user_name }}{% endif %}</dd>
+          <dt>File</dt><dd>{{ r.pdf_name }}</dd>
+          {% if r.status == 'done' %}<dt>Extracted</dt><dd>{{ s.records }} of {{ s.raw_refs }} cases · {{ s.sic_verified }} of {{ s.companies }} companies with SIC codes</dd>{% endif %}
+          {% if r.status == 'failed' %}<dt>Problem</dt><dd>{{ r.error|truncate(140) }}</dd>{% endif %}
+        </dl>
+        <div class="quick">
+          {% if r.status == 'done' %}
+          <a class="btn ghost sm" href="/runs/{{ r.id }}">Open cases <span class="badge grey">{{ s.records }}</span></a>
+          {% if n_multi %}<a class="btn ghost sm" href="/runs/{{ r.id }}#multi">Earlier filings <span class="badge red">{{ n_multi }}</span></a>{% endif %}
+          {% if n_check %}<a class="btn ghost sm" href="/runs/{{ r.id }}#check">Needs checking <span class="badge amber">{{ n_check }}</span></a>{% endif %}
+          <a class="btn ghost sm" href="/runs/{{ r.id }}/download/register">Register CSV</a>
+          {% elif r.status == 'failed' %}<a class="btn ghost sm" href="/runs/{{ r.id }}">See what went wrong</a>
+          {% else %}<a class="btn ghost sm" href="/runs/{{ r.id }}">View progress</a>{% endif %}
+        </div>
       </div>
-      {% endif %}
+      {% if r.status == 'done' %}<a class="btn sm" href="/runs/{{ r.id }}/download/xlsx">Download workbook</a>{% endif %}
     </div>
-    <div class="side">
-      {% if r.status == 'done' %}
-      <a class="btn" href="/runs/{{ r.id }}/download/xlsx">Download workbook</a>
-      <div class="stat">{{ s.sic_verified }} of {{ s.companies }} companies with SIC<br>{{ s.records }} of {{ s.raw_refs }} cases extracted</div>
-      {% elif r.status == 'failed' %}
-      <a class="btn ghost" href="/runs/{{ r.id }}">See what went wrong</a>
-      {% else %}
-      <a class="btn ghost" href="/runs/{{ r.id }}">View progress</a>
-      {% endif %}
-    </div>
-  </article>
+  </details>
 {% endfor %}
 </div>
 {% else %}
