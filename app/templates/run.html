@@ -143,7 +143,10 @@
         {% if x.multiple == 'Yes' %}<span class="pill red">Earlier filings</span>{% endif %}
         {% if x.trading or x.postcode %}<span class="pill blue">{{ x.trading }}{% if x.trading and x.postcode %}, {% endif %}{{ x.postcode }}</span>{% endif %}
       </div>
-      {% if x.notes %}<details><summary>Notes</summary><p>{{ x.notes }}</p></details>{% endif %}
+      <div class="row" style="gap:14px;margin-top:6px">
+        {% if x.caseboard %}<a class="link small" style="color:var(--accent)" href="{{ x.caseboard }}" target="_blank" rel="noopener">Search Caseboard</a>{% endif %}
+        {% if x.notes %}<details style="margin:0"><summary style="margin:0">Notes</summary><p>{{ x.notes }}</p></details>{% endif %}
+      </div>
     </td>
     <td data-l="Filing">{{ x.filing }}{% if x.petitioner %}<div class="small">{{ x.petitioner }}</div>{% endif %}</td>
     <td data-l="SIC" class="sic">{% if x.sic %}{% set descs = x.sic_desc.split(';') %}{% for code in x.sic.split(';') %}<div title="{{ descs[loop.index0] }}">{{ code }} <span class="small hide-s">{{ descs[loop.index0]|truncate(30) }}</span></div>{% endfor %}{% else %}<span class="small">None</span>{% endif %}</td>

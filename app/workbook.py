@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import re
 import shutil
 from copy import copy
 from datetime import datetime
@@ -16,6 +17,13 @@ HEADERS = [
     "Multiple Caseboard Filings", "Property Postcode", "Trading Name", "Charge Holder",
     "Property ID (IBIS)", "Property name", "Notes/Outcome", "Action",
 ]
+
+
+def caseboard_search_url(name: str) -> str:
+    """The Caseboard case search for a party name, in the form the team already used."""
+    from urllib.parse import quote
+    clean = re.sub(r"\s*\((?:in\s+[^)]*)\)", "", name or "", flags=re.I).strip()
+    return "https://caseboard.io/cases/?prod_caseboard_cases%5Bquery%5D=" + quote(clean)
 
 
 def build_rows(cases, lookups: dict[str, Lookup], extras: dict | None = None):
@@ -73,6 +81,7 @@ def build_rows(cases, lookups: dict[str, Lookup], extras: dict | None = None):
 
         rows.append({
             "case_ref": c.case_ref,
+            "caseboard_url": caseboard_search_url(c.search_name or c.subject_name),
             "subject_type": c.subject_type,
             "status": lk.status,
             "values": [
@@ -139,6 +148,10 @@ def write_workbook(template: str | Path, out: str | Path, rows) -> None:
                 cell.number_format = "@"
             else:
                 cell.value = val
+            # Column G keeps its Yes/No value but opens that company's Caseboard search,
+            # so anyone can confirm the full filing history in one click.
+            if col == 7 and val and row.get("caseboard_url"):
+                cell.hyperlink = row["caseboard_url"]
         if row_height:
             ws.row_dimensions[r].height = row_height
 

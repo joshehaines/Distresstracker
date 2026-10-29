@@ -72,6 +72,7 @@ def run(pdf: str | Path, template: str | Path, out_dir: str | Path, api_key: str
             "multiple": row["values"][6] or "", "postcode": row["values"][7] or "",
             "trading": row["values"][8] or "", "charges": row["values"][9] or "",
             "notes": row["values"][12] or "",
+            "caseboard": row.get("caseboard_url", ""),
         } for c, row in zip(cases, rows)],
         "company_numbers": {c.case_ref: lookups[c.case_ref].company_number for c in cases
                             if lookups[c.case_ref].company_number},
