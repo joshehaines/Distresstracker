@@ -1,48 +1,72 @@
 {% extends "base.html" %}
+{% block title %}Alerts · {{ app_name }}{% endblock %}
 {% block head %}<style>
-.drop{display:block;margin:0;font-weight:400;position:relative;border:1.5px dashed var(--rule-strong);border-radius:6px;background:var(--sheet);padding:44px 28px;cursor:pointer;transition:border-color .15s,background .15s}
-.drop:hover,.drop.over{border-color:var(--seal);background:var(--seal-tint)}
+.upload{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 24px;align-items:center;padding:18px 20px}
+.drop{position:relative;display:flex;align-items:center;gap:16px;margin:0;padding:16px 18px;border:1.5px dashed var(--line-strong);border-radius:var(--radius);background:var(--head);cursor:pointer;font-weight:400;transition:border-color .12s,background-color .12s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .drop input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.drop:focus-within{outline:2px solid var(--focus);outline-offset:2px}
-.drop strong{display:block;font-size:22px;letter-spacing:-.015em}
-.drop .file{margin-top:10px;font-weight:600;color:var(--seal);min-height:1.5em}
-.submitbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:16px}
-details summary{cursor:pointer;color:var(--muted);font-size:14px}
-details[open] summary{margin-bottom:6px}
-.runs td:first-child{width:40%}
-.runs .date{font-weight:700;font-size:17px;text-decoration:none}
-.runs .date:hover{color:var(--seal)}
-.num{font-weight:700}
-.empty{padding:28px;color:var(--muted)}
+.drop svg{width:28px;height:28px;flex:none;color:var(--accent)}
+.drop b{display:block;font-size:15.5px}
+.drop .file{font-weight:600;color:var(--accent)}
+.upload .side{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.upload details summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.upload details[open]{grid-column:1/-1}
+.upload details input{margin-top:8px}
+@media (max-width:760px){.upload{grid-template-columns:1fr}.upload .side{align-items:stretch}}
+
+.alerts{display:flex;flex-direction:column;gap:12px}
+.alert-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px 24px;padding:16px 18px}
+.alert-row h3{margin:0;font-size:24px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}
+.alert-row h3 a{text-decoration:none}
+.alert-row h3 .pill{font-family:var(--font-ui);font-size:13px;letter-spacing:0}
+.alert-row h3 a:hover{text-decoration:underline;text-underline-offset:3px}
+.facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 18px;margin:8px 0 12px;font-size:14px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0}
+.quick{display:flex;flex-wrap:wrap;gap:8px}
+.quick .btn{font-weight:600}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:var(--radius);font-size:11.5px;font-weight:700;line-height:1;color:#fff}
+.badge.amber{background:var(--warn)}.badge.grey{background:var(--grey)}.badge.red{background:var(--bad)}.badge.green{background:var(--ok)}
+.alert-row .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+.alert-row .side .btn{width:184px}
+.alert-row .stat{font-size:12.5px;color:var(--muted);line-height:1.5}
+@media (max-width:760px){.alert-row{grid-template-columns:1fr}.alert-row .side{align-items:flex-start;text-align:left}.alert-row .side .btn{width:100%}}
+.empty{padding:36px 20px;text-align:center;color:var(--muted)}
 </style>{% endblock %}
 {% block body %}
-<h1>Process a case alert</h1>
-<p class="lede">Drop in the Caseboard alert PDF. You'll get every case back with SIC codes, charge holders and earlier filings, in the CCO template.</p>
+{% set done = runs|selectattr('status','equalto','done')|list %}
+{% set to_check = done|selectattr('s')|map(attribute='s')|map(attribute='unresolved')|map('length')|sum %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{% if user.is_admin %}Team alerts{% else %}Your alerts{% endif %}</h1>
+    <p class="meta">{{ done|length }} processed{% if to_check %} · {{ to_check }} {{ 'case needs' if to_check == 1 else 'cases need' }} a manual check{% endif %}</p>
+  </div>
+</div>
 
-{% if not ch_ready %}<div class="notice">Companies House isn't connected yet, so processing is paused. Your admin needs to add the API key.</div>{% endif %}
-{% if not template_ready %}<div class="notice">There's no master template yet. {% if user.is_admin %}Add it on the <a href="/admin">Team</a> page{% else %}Ask your admin to add one, or attach your own below{% endif %}.</div>{% endif %}
+{% if not ch_ready %}<div class="notice">Companies House isn't connected, so processing is paused. Your admin needs to add the API key.</div>{% endif %}
+{% if not template_ready %}<div class="notice">There's no master template yet. {% if user.is_admin %}Add it on the <a class="link" href="/admin">Team</a> page{% else %}Ask your admin to add one, or attach your own below{% endif %}.</div>{% endif %}
 
-<form method="post" action="/runs" enctype="multipart/form-data" id="up">
+<form class="card upload" method="post" action="/runs" enctype="multipart/form-data" id="up">
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
   <label class="drop" id="drop" for="pdf">
-    <strong>Choose the alert PDF</strong>
-    <span class="small">or drag it here. Caseboard "Case alerts for …" email exports, up to 25 MB.</span>
-    <div class="file" id="fname" aria-live="polite"></div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3"/></svg>
+    <span><b>Upload a Caseboard alert</b><span class="small" id="fname">Choose the PDF or drag it here. Up to 25 MB.</span></span>
     <input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required>
   </label>
-  <div class="submitbar">
+  <div class="side">
     <button class="btn" id="go" disabled>Process alert</button>
-    <details>
-      <summary>Use a different template for this alert</summary>
-      <input id="template" name="template" type="file" accept=".xlsx" aria-label="Template workbook">
-      <div class="small">Needs Sheet1 with the standard A–N headers.</div>
-    </details>
   </div>
+  <details>
+    <summary>Use a different template for this alert</summary>
+    <input id="template" name="template" type="file" accept=".xlsx" aria-label="Template workbook">
+    <div class="small" style="margin-top:4px">Sheet1 must hold the standard A–N headers.</div>
+  </details>
 </form>
 <script>
 (function(){
-  var f=document.getElementById('pdf'),d=document.getElementById('drop'),n=document.getElementById('fname'),b=document.getElementById('go');
-  function show(){var x=f.files&&f.files[0];n.textContent=x?x.name:'';b.disabled=!x;}
+  var f=document.getElementById('pdf'),d=document.getElementById('drop'),n=document.getElementById('fname'),b=document.getElementById('go'),t=n.textContent;
+  function show(){var x=f.files&&f.files[0];n.textContent=x?x.name:t;n.className=x?'file':'small';b.disabled=!x;}
   f.addEventListener('change',show);
   ['dragenter','dragover'].forEach(function(e){d.addEventListener(e,function(){d.classList.add('over')})});
   ['dragleave','drop'].forEach(function(e){d.addEventListener(e,function(){d.classList.remove('over')})});
@@ -50,29 +74,46 @@ details[open] summary{margin-bottom:6px}
 })();
 </script>
 
-<h2>{% if user.is_admin %}Recent alerts, whole team{% else %}Your recent alerts{% endif %}</h2>
-<div class="sheet scroll">
+<h2 class="section">Recent alerts</h2>
 {% if runs %}
-<table class="runs">
-  <thead><tr><th>Alert</th><th>Cases</th><th class="hide-s">SIC verified</th><th class="hide-s">Earlier filings</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for r in runs %}
-  {% set s = r.s %}
-  <tr>
-    <td><a class="date" href="/runs/{{ r.id }}">{{ r.alert_date|nice_date or r.pdf_name }}</a>
-      <div class="small">Uploaded {{ r.created|nice_date(True) }}{% if user.is_admin %} by {{ r.user_name }}{% endif %}</div></td>
-    <td class="num">{{ s.records if s else '' }}</td>
-    <td class="hide-s">{% if s %}{{ s.sic_verified }} of {{ s.companies }}{% endif %}</td>
-    <td class="hide-s">{% if s and s.rows %}{{ s.rows|selectattr('multiple','equalto','Yes')|list|length }}{% endif %}</td>
-    <td>{% if r.status == 'done' %}{% if s and s.unresolved %}<span class="chip warn">{{ s.unresolved|length }} to check</span>{% else %}<span class="chip ok">Ready</span>{% endif %}
-        {% elif r.status == 'failed' %}<span class="chip seal">Failed</span>
-        {% else %}<span class="chip">Processing</span>{% endif %}</td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<div class="empty">No alerts processed yet. Your first upload will appear here.</div>
-{% endif %}
+<div class="alerts">
+{% for r in runs %}{% set s = r.s %}
+  {% set n_check = s.unresolved|length if s else 0 %}
+  {% set n_multi = (s.rows|selectattr('multiple','equalto','Yes')|list|length) if s and s.rows else 0 %}
+  <article class="card alert-row">
+    <div>
+      <h3 class="display"><a href="/runs/{{ r.id }}">{% if r.alert_date %}Alert of {{ r.alert_date|nice_date }}{% else %}{{ r.pdf_name }}{% endif %}</a>
+        {% if r.status == 'done' %}{% if s.validation_failures or not s.extraction_complete %}<span class="pill red">Check workbook</span>{% elif n_check %}<span class="pill amber">{{ n_check }} to check</span>{% else %}<span class="pill green">Complete</span>{% endif %}
+        {% elif r.status == 'failed' %}<span class="pill red">Failed</span>{% else %}<span class="pill blue">Processing</span>{% endif %}
+      </h3>
+      <dl class="facts">
+        <dt>Uploaded</dt><dd>{{ r.created|nice_date(True) }}{% if user.is_admin %} by {{ r.user_name }}{% endif %}</dd>
+        <dt>File</dt><dd>{{ r.pdf_name }}</dd>
+        {% if r.status == 'failed' %}<dt>Problem</dt><dd>{{ r.error|truncate(120) }}</dd>{% endif %}
+      </dl>
+      {% if r.status == 'done' %}
+      <div class="quick">
+        <a class="btn ghost sm" href="/runs/{{ r.id }}">Cases <span class="badge grey">{{ s.records }}</span></a>
+        {% if n_multi %}<a class="btn ghost sm" href="/runs/{{ r.id }}#multi">Earlier filings <span class="badge red">{{ n_multi }}</span></a>{% endif %}
+        {% if n_check %}<a class="btn ghost sm" href="/runs/{{ r.id }}#check">Needs checking <span class="badge amber">{{ n_check }}</span></a>{% endif %}
+        <a class="btn ghost sm" href="/runs/{{ r.id }}/download/register">Register CSV</a>
+      </div>
+      {% endif %}
+    </div>
+    <div class="side">
+      {% if r.status == 'done' %}
+      <a class="btn" href="/runs/{{ r.id }}/download/xlsx">Download workbook</a>
+      <div class="stat">{{ s.sic_verified }} of {{ s.companies }} companies with SIC<br>{{ s.records }} of {{ s.raw_refs }} cases extracted</div>
+      {% elif r.status == 'failed' %}
+      <a class="btn ghost" href="/runs/{{ r.id }}">See what went wrong</a>
+      {% else %}
+      <a class="btn ghost" href="/runs/{{ r.id }}">View progress</a>
+      {% endif %}
+    </div>
+  </article>
+{% endfor %}
 </div>
+{% else %}
+<div class="card empty">No alerts yet. Upload the first Caseboard PDF above and it will appear here.</div>
+{% endif %}
 {% endblock %}

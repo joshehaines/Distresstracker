@@ -1,59 +1,76 @@
 {% extends "base.html" %}
 {% block title %}Team · {{ app_name }}{% endblock %}
 {% block head %}<style>
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-@media (max-width:820px){.grid{grid-template-columns:1fr}}
-.link{display:flex;gap:8px;align-items:center;margin-top:10px}
-.link input{font-size:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.card-body{padding:16px}
+.card-body label:first-child{margin-top:0}
+.newlink{display:flex;gap:8px;margin-top:10px}
+.newlink input{font-size:13.5px}
 .inline{display:inline;margin:0}
+.actions{text-align:right;white-space:nowrap}
+.actions .btn{margin-left:4px}
+.status-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.status-row:last-child{border-bottom:0}
 </style>{% endblock %}
 {% block body %}
-<h1>Team</h1>
-<p class="lede">Invite colleagues, manage who has access and keep the master template up to date.</p>
+{% set active = users|selectattr('active')|list %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Team</h1>
+    <p class="meta">{{ active|length }} {{ 'person' if active|length == 1 else 'people' }} with access{% if invites %} · {{ invites|length }} unused {{ 'link' if invites|length == 1 else 'links' }}{% endif %}</p>
+  </div>
+</div>
+
 {% if notice %}<div class="notice {{ 'bad' if 'rejected' in notice or "can't" in notice else 'ok' }}">{{ notice }}</div>{% endif %}
 
 {% if new_link %}
 <div class="notice ok">
-  <strong>{{ 'Password reset' if new_link.kind == 'password reset' else 'Invite' }} link for {{ new_link.email }}</strong><br>
-  Send it to them directly. It works once and expires in {{ '2 days' if new_link.kind == 'password reset' else '7 days' }}.
-  <div class="link"><input type="text" id="nl" value="{{ new_link.url }}" readonly aria-label="Link">
-    <button class="btn sm" type="button" onclick="var i=document.getElementById('nl');i.select();navigator.clipboard.writeText(i.value);this.textContent='Copied'">Copy</button></div>
+  <b>{{ 'Password reset' if new_link.kind == 'password reset' else 'Invite' }} link for {{ new_link.email }}</b><br>
+  {{ app_name }} doesn't send email, so copy this and send it to them yourself. It works once and expires in {{ '2 days' if new_link.kind == 'password reset' else '7 days' }}.
+  <div class="newlink"><input type="text" id="nl" value="{{ new_link.url }}" readonly aria-label="Link">
+    <button class="btn sm" type="button" onclick="var i=document.getElementById('nl');i.select();navigator.clipboard.writeText(i.value);this.textContent='Copied'">Copy link</button></div>
 </div>
 {% endif %}
 
-<div class="grid">
-  <form class="sheet pad" method="post" action="/admin/invite">
+<div class="two">
+  <form class="card" method="post" action="/admin/invite">
     <input type="hidden" name="csrf_token" value="{{ csrf }}">
-    <h2 style="margin-top:0">Invite a colleague</h2>
-    <label for="invite-email">Their work email</label>
-    <input id="invite-email" name="email" type="email" placeholder="name@christie.com" required>
-    <div style="margin-top:16px"><button class="btn">Create invite link</button></div>
-    <p class="small" style="margin-bottom:0">Enter an existing user's email to make a password reset link instead.</p>
+    <div class="card-head">Invite a colleague</div>
+    <div class="card-body">
+      <label for="invite-email">Work email</label>
+      <input id="invite-email" name="email" type="email" placeholder="name@christie.com" required>
+      <div class="row" style="margin-top:14px"><button class="btn">Create invite link</button></div>
+      <p class="small" style="margin:10px 0 0">For someone who already has access, this makes a password reset link instead.</p>
+    </div>
   </form>
 
-  <form class="sheet pad" method="post" action="/admin/template" enctype="multipart/form-data">
+  <form class="card" method="post" action="/admin/template" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf }}">
-    <h2 style="margin-top:0">Master template</h2>
-    <p class="small" style="margin-top:0">{% if template_ready %}In use. <a href="/admin/template">Download the current file</a>. Uploading a new one replaces it.{% else %}Not added yet. Upload "Case Alerts - CCO sector companies.xlsx".{% endif %}
-    Sheet1 row 1 must hold the A–N headers. Example rows are removed on each run, and the file itself is never changed.</p>
-    <input name="template" type="file" accept=".xlsx" required aria-label="Template workbook">
-    <div style="margin-top:16px"><button class="btn">Upload template</button></div>
+    <div class="card-head">Master template {% if template_ready %}<span class="pill green" style="margin-left:6px">In use</span>{% else %}<span class="pill amber" style="margin-left:6px">Missing</span>{% endif %}</div>
+    <div class="card-body">
+      <p class="small" style="margin:0 0 12px">{% if template_ready %}<a class="link" href="/admin/template">Download the current file</a>. Uploading a new one replaces it.{% else %}Upload "Case Alerts - CCO sector companies.xlsx".{% endif %}
+      Sheet1 row 1 must hold the A–N headers. Example rows are removed on each run and the file itself is never changed.</p>
+      <input name="template" type="file" accept=".xlsx" required aria-label="Template workbook">
+      <div class="row" style="margin-top:14px"><button class="btn">Upload template</button></div>
+    </div>
   </form>
 </div>
 
-<h2>People</h2>
-<div class="sheet scroll">
-<table>
+<h2 class="section">People</h2>
+<div class="card scroll">
+<table class="grid">
   <thead><tr><th>Name</th><th class="hide-s">Last signed in</th><th>Access</th><th></th></tr></thead>
   {% for u in users %}
   <tr>
-    <td><strong>{{ u.name }}</strong>{% if u.id == user.id %} <span class="small">(you)</span>{% endif %}<div class="small">{{ u.email }}</div></td>
+    <td><b>{{ u.name }}</b>{% if u.id == user.id %} <span class="small">(you)</span>{% endif %}<div class="small">{{ u.email }}</div></td>
     <td class="hide-s small">{{ u.last_login|nice_date(True) if u.last_login else 'Never' }}</td>
-    <td>{% if not u.active %}<span class="chip seal">Disabled</span>{% elif not u.pw_hash %}<span class="chip warn">Invite pending</span>{% elif u.is_admin %}<span class="chip ok">Admin</span>{% else %}<span class="chip">Member</span>{% endif %}</td>
-    <td style="text-align:right;white-space:nowrap">
+    <td>{% if not u.active %}<span class="pill red">Removed</span>{% elif not u.pw_hash %}<span class="pill amber">Invite pending</span>{% elif u.is_admin %}<span class="pill blue">Admin</span>{% else %}<span class="pill grey">Member</span>{% endif %}</td>
+    <td class="actions">
       {% if u.id != user.id %}
-      <form class="inline" method="post" action="/admin/users/{{ u.id }}/{{ 'remove-admin' if u.is_admin else 'make-admin' }}"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn quiet sm">{{ 'Remove admin' if u.is_admin else 'Make admin' }}</button></form>
-      <form class="inline" method="post" action="/admin/users/{{ u.id }}/{{ 'enable' if not u.active else 'disable' }}"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn quiet sm">{{ 'Restore access' if not u.active else 'Remove access' }}</button></form>
+      <form class="inline" method="post" action="/admin/invite"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="email" value="{{ u.email }}"><button class="btn ghost sm">Reset link</button></form>
+      <form class="inline" method="post" action="/admin/users/{{ u.id }}/{{ 'remove-admin' if u.is_admin else 'make-admin' }}"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn ghost sm">{{ 'Remove admin' if u.is_admin else 'Make admin' }}</button></form>
+      <form class="inline" method="post" action="/admin/users/{{ u.id }}/{{ 'enable' if not u.active else 'disable' }}"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn ghost sm">{{ 'Restore access' if not u.active else 'Remove access' }}</button></form>
       {% endif %}
     </td>
   </tr>
@@ -62,20 +79,23 @@
 </div>
 
 {% if invites %}
-<h2>Unused links</h2>
-<div class="sheet scroll">
-<table>
+<h2 class="section">Unused links</h2>
+<div class="card scroll">
+<table class="grid">
+  <thead><tr><th>Email</th><th>Type</th><th class="hide-s">Expires</th><th></th></tr></thead>
   {% for i in invites %}
-  <tr><td>{{ i.email }}</td><td class="small">{{ 'Password reset' if i.kind == 'reset' else ('Admin setup' if i.kind == 'setup' else 'Invite') }}, expires {{ i.expires|nice_date }}</td>
-  <td style="text-align:right"><form class="inline" method="post" action="/admin/invites/{{ i.rowid }}/revoke"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn quiet sm">Cancel link</button></form></td></tr>
+  <tr><td>{{ i.email }}</td><td>{{ 'Password reset' if i.kind == 'reset' else ('Admin setup' if i.kind == 'setup' else 'Invite') }}</td><td class="hide-s small">{{ i.expires|nice_date }}</td>
+  <td class="actions"><form class="inline" method="post" action="/admin/invites/{{ i.rowid }}/revoke"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn ghost sm">Cancel link</button></form></td></tr>
   {% endfor %}
 </table>
 </div>
+<p class="small" style="margin-top:8px">Links are only shown once, when created. If one has gone astray, cancel it and create a new one.</p>
 {% endif %}
 
-<h2>Connections</h2>
-<div class="sheet pad">
-  <div class="row" style="justify-content:space-between"><span>Companies House API</span>{% if ch_ready %}<span class="chip ok">Connected</span>{% else %}<span class="chip seal">Missing key</span>{% endif %}</div>
-  <p class="small" style="margin:10px 0 0">The Gazette and the FSA hygiene register are public and need no setup.</p>
+<h2 class="section">Data sources</h2>
+<div class="card">
+  <div class="status-row"><span>Companies House API <span class="small">· SIC codes, charges, insolvency history</span></span>{% if ch_ready %}<span class="pill green">Connected</span>{% else %}<span class="pill red">Key missing</span>{% endif %}</div>
+  <div class="status-row"><span>The Gazette <span class="small">· earlier petitions and notices</span></span><span class="pill green">Public</span></div>
+  <div class="status-row"><span>FSA food hygiene register <span class="small">· premises postcode and trading name</span></span><span class="pill green">Public</span></div>
 </div>
 {% endblock %}

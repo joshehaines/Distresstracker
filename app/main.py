@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 import openpyxl
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -34,6 +35,7 @@ app.add_middleware(
     session_cookie="ca_session", max_age=60 * 60 * 12, same_site="lax",
     https_only=os.environ.get("COOKIE_SECURE", "1") == "1",
 )
+app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 _LONDON = ZoneInfo("Europe/London")
 

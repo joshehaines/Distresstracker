@@ -4,79 +4,108 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#172640">
 <title>{% block title %}{{ app_name }}{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:wght@600;700&display=swap">
 <style>
+/* Same house tokens as the Data Rooms console: warm paper, white cards,
+   one navy accent, one 6px radius, Source Sans 3 for the interface and
+   Cormorant Garamond for the wordmark and alert titles. */
 :root{
-  --paper:#eef1f4; --sheet:#fff; --ink:#17212b; --muted:#5a6571; --rule:#d6dce2; --rule-strong:#b9c2cb;
-  --seal:#8a1c2b; --seal-tint:#f6e9eb; --ok:#2e6a4e; --ok-tint:#e6f1eb; --warn:#94600a; --warn-tint:#fbf1de;
-  --focus:#2563eb;
+  --bg:#f5f4f0; --surface:#fff; --ink:#1f1d1a; --muted:#6b6760;
+  --line:#e4e1da; --line-strong:#cfcac0; --head:#faf9f6;
+  --accent:#172640; --accent-hover:#21365a; --accent-ink:#fff; --accent-soft:#e9edf4;
+  --ok:#1f7a4d; --ok-soft:#e3f3ea; --warn:#9a5b00; --warn-soft:#fbefd6; --bad:#a3271f; --bad-soft:#fbe5e2;
+  --grey-soft:#edebe6; --grey:#4d4944;
+  --radius:6px;
+  --font-ui:"Source Sans 3","Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-brand:"Cormorant Garamond",Georgia,serif;
 }
-@media (prefers-color-scheme:dark){:root{
-  --paper:#11161b; --sheet:#182028; --ink:#e7ebef; --muted:#97a2ad; --rule:#2a343e; --rule-strong:#3a4652;
-  --seal:#e0707d; --seal-tint:#2c1a1e; --ok:#73c39c; --ok-tint:#16271f; --warn:#e3ad55; --warn-tint:#2b2214;
-  --focus:#7aa7ff;
-}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 "Public Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-ui);font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent}
 a{color:inherit}
-:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:3px}
+a.link{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+*:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--radius)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* frame */
-.top{display:flex;align-items:center;gap:20px;max-width:1080px;margin:0 auto;padding:18px 24px}
-.mark{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;letter-spacing:-.01em}
-.mark i{width:12px;height:12px;border-radius:50%;background:var(--seal);box-shadow:0 0 0 4px var(--seal-tint)}
-.top nav{margin-left:auto;display:flex;gap:4px;align-items:center}
-.top nav a,.top nav button{font:inherit;font-size:14px;color:var(--muted);text-decoration:none;background:none;border:0;padding:6px 10px;border-radius:6px;cursor:pointer}
-.top nav a:hover,.top nav button:hover{color:var(--ink);background:var(--sheet)}
-.top nav a[aria-current=page]{color:var(--ink);font-weight:600}
-main{max-width:1080px;margin:0 auto;padding:8px 24px 80px}
+/* top bar */
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.bar{max-width:1200px;margin:0 auto;height:76px;display:flex;align-items:center;gap:28px;padding:0 24px}
+.wordmark{display:flex;align-items:center;gap:14px;text-decoration:none}
+.wordmark img{height:40px;width:auto;display:block}
+.wordmark span{font-family:var(--font-brand);font-size:24px;font-weight:600;letter-spacing:.01em;color:var(--muted);padding-left:16px;border-left:1px solid var(--line);line-height:1}
+.topnav{display:flex;align-self:stretch}
+.topnav a{display:flex;align-items:center;gap:6px;padding:0 14px;font-weight:600;font-size:15px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent}
+.topnav a:hover{color:var(--ink)}
+.topnav a[aria-current=page]{color:var(--accent);border-bottom-color:var(--accent)}
+.topnav .count{font-size:12px;font-weight:600;color:var(--muted)}
+.who{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:14px;color:var(--muted)}
+.who b{color:var(--ink);font-weight:600}
+.who button{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+main{flex:1;width:100%;max-width:1200px;margin:0 auto;padding:28px 24px 56px}
+.foot{border-top:1px solid var(--line);background:var(--surface)}
+.foot div{max-width:1200px;margin:0 auto;padding:12px 24px;display:flex;flex-wrap:wrap;gap:6px 24px;font-size:12px;color:var(--muted)}
+.foot span:last-child{margin-left:auto}
 
-/* type */
-h1{font-size:clamp(28px,4.2vw,40px);line-height:1.1;letter-spacing:-.025em;font-weight:800;margin:24px 0 8px}
-h2{font-size:18px;letter-spacing:-.01em;margin:44px 0 12px;font-weight:700}
-.lede{color:var(--muted);max-width:62ch;margin:0 0 28px;font-size:17px}
-.small{font-size:14px;color:var(--muted)}
-.ref{font-weight:600;white-space:nowrap;letter-spacing:-.005em}
+/* page heads */
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:20px}
+.page-title{font-size:22px;font-weight:700;line-height:1.2;margin:0;letter-spacing:-.005em}
+.display{font-family:var(--font-brand);font-weight:600;letter-spacing:.005em;line-height:1.1}
+.meta{color:var(--muted);font-size:14px;margin:4px 0 0}
+h2.section{font-size:16px;font-weight:700;margin:32px 0 10px}
 
-/* sheet = a white page on the slate desk */
-.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:4px}
-.pad{padding:24px}
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.card-head{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px}
+.pad{padding:20px}
+.muted{color:var(--muted)}
+.small{font-size:13px;color:var(--muted)}
 
 /* controls */
-label{display:block;font-size:14px;font-weight:600;margin:18px 0 6px}
-input[type=email],input[type=password],input[type=text]{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--rule-strong);border-radius:6px;background:var(--sheet);color:var(--ink)}
-input:focus{outline:2px solid var(--focus);outline-offset:0;border-color:transparent}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:600;padding:11px 18px;border-radius:6px;border:1px solid var(--ink);background:var(--ink);color:var(--sheet);text-decoration:none;cursor:pointer}
-.btn:hover{background:var(--seal);border-color:var(--seal)}
-.btn:disabled{opacity:.45;cursor:not-allowed;background:var(--ink);border-color:var(--ink)}
-.btn.quiet{background:transparent;color:var(--ink);border-color:var(--rule-strong)}
-.btn.quiet:hover{border-color:var(--ink);background:transparent}
-.btn.sm{padding:6px 11px;font-size:14px;font-weight:500}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label{display:block;font-size:13.5px;font-weight:600;margin:16px 0 6px}
+input[type=email],input[type=password],input[type=text]{width:100%;min-height:40px;padding:8px 11px;font:inherit;font-size:15px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius)}
+input::placeholder{color:#9a958c}
+input[type=file]{font:inherit;font-size:14px;max-width:100%}
+input[type=file]::file-selector-button{font:inherit;font-size:13.5px;font-weight:600;margin-right:10px;padding:5px 11px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:7px 15px;font:inherit;font-size:14.5px;font-weight:600;border-radius:var(--radius);border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);text-decoration:none;cursor:pointer;white-space:nowrap;transition:background-color .12s,border-color .12s}
+.btn:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+.btn.ghost:hover{background:var(--bg)}
+.btn.sm{min-height:30px;padding:3px 10px;font-size:13px}
+.btn svg{width:15px;height:15px;flex:none}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* status pills: same soft tints as Data Rooms */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:var(--radius);font-size:12.5px;font-weight:600;line-height:1.6;white-space:nowrap}
+.pill.green{background:var(--ok-soft);color:var(--ok)}
+.pill.amber{background:var(--warn-soft);color:var(--warn)}
+.pill.red{background:var(--bad-soft);color:var(--bad)}
+.pill.grey{background:var(--grey-soft);color:var(--grey)}
+.pill.blue{background:var(--accent-soft);color:var(--accent)}
 
 /* notices */
-.notice{border-left:3px solid var(--warn);background:var(--warn-tint);padding:12px 16px;margin:0 0 20px;font-size:15px;border-radius:0 4px 4px 0}
-.notice.bad{border-color:var(--seal);background:var(--seal-tint)}
-.notice.ok{border-color:var(--ok);background:var(--ok-tint)}
-
-/* chips: status words, coloured by meaning */
-.chip{display:inline-block;font-size:13px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--paper);color:var(--muted);white-space:nowrap}
-.chip.ok{background:var(--ok-tint);color:var(--ok)}
-.chip.warn{background:var(--warn-tint);color:var(--warn)}
-.chip.seal{background:var(--seal-tint);color:var(--seal)}
+.notice{border:1px solid var(--line);border-left:4px solid var(--warn);background:var(--surface);border-radius:var(--radius);padding:11px 16px;margin:0 0 18px;font-size:14.5px}
+.notice.bad{border-left-color:var(--bad)}
+.notice.ok{border-left-color:var(--ok)}
 
 /* tables */
-table{width:100%;border-collapse:collapse;font-size:15px}
-th{text-align:left;font-size:13px;font-weight:600;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--rule-strong)}
-td{padding:12px;border-bottom:1px solid var(--rule);vertical-align:top}
-tr:last-child td{border-bottom:0}
+table.grid{width:100%;border-collapse:collapse;font-size:14px}
+table.grid th{text-align:left;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--head)}
+table.grid td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+table.grid tr:last-child td{border-bottom:0}
 .scroll{overflow-x:auto}
-@media (max-width:640px){
-  main{padding:4px 16px 64px}.top{padding:14px 16px}
+
+@media (max-width:760px){
+  .bar{height:64px;gap:16px;padding:0 16px}
+  .wordmark img{height:28px}.wordmark span{display:none}
+  .who .hello{display:none}
+  .topnav a{padding:0 8px}
+  main{padding:20px 16px 48px}
+  .foot div{padding:12px 16px}
   .hide-s{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -84,16 +113,27 @@ tr:last-child td{border-bottom:0}
 {% block head %}{% endblock %}
 </head>
 <body>
-<header class="top">
-  <a class="mark" href="/"><i aria-hidden="true"></i>{{ app_name }}</a>
-  {% if user %}
-  <nav>
-    <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Alerts</a>
-    {% if user.is_admin %}<a href="/admin" {% if request.url.path.startswith('/admin') %}aria-current="page"{% endif %}>Team</a>{% endif %}
-    <form method="post" action="/logout" style="margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button>Sign out</button></form>
-  </nav>
-  {% endif %}
+{% if user %}
+<a href="#main" class="sr-only">Skip to content</a>
+<header class="topbar">
+  <div class="bar">
+    <a class="wordmark" href="/" aria-label="Christie &amp; Co {{ app_name }}, alerts">
+      <img src="/static/christie-logo.svg" alt="Christie &amp; Co"><span>{{ app_name }}</span>
+    </a>
+    <nav class="topnav" aria-label="Main">
+      <a href="/" {% if request.url.path == '/' or request.url.path.startswith('/runs') %}aria-current="page"{% endif %}>Alerts</a>
+      {% if user.is_admin %}<a href="/admin" {% if request.url.path.startswith('/admin') %}aria-current="page"{% endif %}>Team</a>{% endif %}
+    </nav>
+    <div class="who">
+      <span class="hello">Welcome, <b>{{ user.name.split(' ')[0] }}</b></span>
+      <form method="post" action="/logout" style="margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button>Sign out</button></form>
+    </div>
+  </div>
 </header>
-<main>{% block body %}{% endblock %}</main>
+{% endif %}
+<main id="main">{% block body %}{% endblock %}</main>
+{% if user %}
+<footer class="foot"><div><span>Signed in as {{ user.email }}</span><span>Christie &amp; Co {{ app_name }}</span></div></footer>
+{% endif %}
 </body>
 </html>

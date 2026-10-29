@@ -1,41 +1,53 @@
 {% extends "base.html" %}
-{% block title %}Alert {{ r.alert_date|nice_date or r.pdf_name }} · {{ app_name }}{% endblock %}
+{% block title %}{% if r.alert_date %}Alert of {{ r.alert_date|nice_date }}{% else %}{{ r.pdf_name }}{% endif %} · {{ app_name }}{% endblock %}
 {% block head %}<style>
-.back{display:inline-block;margin-top:20px;font-size:14px;color:var(--muted);text-decoration:none}
-.back:hover{color:var(--ink)}
-.facts{display:flex;flex-wrap:wrap;gap:6px 28px;margin:0 0 24px;padding:0;list-style:none;font-size:16px}
-.facts b{font-size:22px;letter-spacing:-.02em;margin-right:4px}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px}
-.progress{height:4px;background:var(--rule);border-radius:2px;overflow:hidden;margin:18px 0 10px}
-.progress i{display:block;height:100%;width:3%;background:var(--seal);transition:width .5s}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
-.tabs button{font:inherit;font-size:14px;padding:7px 12px;border-radius:99px;border:1px solid var(--rule-strong);background:transparent;color:var(--ink);cursor:pointer}
-.tabs button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--sheet)}
-.tabs button span{color:var(--muted);margin-left:4px}
-.tabs button[aria-pressed=true] span{color:inherit;opacity:.7}
-.ledger td{font-size:14.5px}
-.ledger th:nth-child(1){width:15%}.ledger th:nth-child(2){width:29%}.ledger th:nth-child(3){width:21%}.ledger th:nth-child(4){width:20%}
-.ledger .ref{font-size:13.5px;color:var(--muted)}
-.ledger .subj{font-weight:600;font-size:15px}
-.ledger .sic{white-space:nowrap}
-.ledger details summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:4px}
-.ledger details p{margin:6px 0 0;font-size:13.5px;color:var(--muted);max-width:70ch}
+.crumb{font-size:14px;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:10px}
+.crumb:hover{color:var(--ink)}
+.page-head h1{font-size:34px;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.page-head h1 .pill{font-family:var(--font-ui);font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 24px}
+.tile{padding:14px 16px}
+.tile b{display:block;font-size:26px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+.tile span{font-size:13.5px;color:var(--muted)}
+.tile small{color:var(--muted);font-size:15px;font-weight:600}
+@media (max-width:760px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.progress{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:14px 0 10px}
+.progress i{display:block;height:100%;width:3%;background:var(--accent);transition:width .5s}
+.tickets{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.ticket{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 18px;align-items:center;padding:12px 16px;border-left:4px solid var(--warn)}
+.ticket.grey{border-left-color:var(--line-strong)}
+.ticket .kind{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.ticket .what{font-weight:700;font-size:15px;margin:2px 0}
+.ticket .why{font-size:13.5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:3px 12px;border-radius:var(--radius);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.chip span{color:var(--muted);font-weight:600}
+.chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip[aria-pressed=true] span{color:#fff;opacity:.75}
+.ledger td{font-size:14px}
+.ledger .ref{font-size:13px;color:var(--muted);white-space:nowrap;font-weight:600}
+.ledger .subj{font-weight:700;font-size:14.5px}
+.ledger .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.ledger details summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:600;margin-top:6px}
+.ledger details p{margin:6px 0 0;font-size:13px;color:var(--muted);max-width:68ch}
+.ledger .sic div{white-space:nowrap}
 .ledger tr[hidden]{display:none}
+.ledger th:nth-child(1){width:14%}.ledger th:nth-child(2){width:30%}.ledger th:nth-child(3){width:20%}.ledger th:nth-child(4){width:20%}
 @media (max-width:760px){
   .ledger thead{display:none}
-  .ledger tr{display:block;padding:12px 14px;border-bottom:1px solid var(--rule)}
+  .ledger tr{display:block;padding:12px 14px;border-bottom:1px solid var(--line)}
   .ledger td{display:block;border:0;padding:2px 0}
   .ledger td[data-l]:before{content:attr(data-l) ": ";color:var(--muted)}
 }
 </style>{% endblock %}
 {% block body %}
-<a class="back" href="/">All alerts</a>
-<h1>Alert of {{ r.alert_date|nice_date }}</h1>
-<p class="lede" style="margin-bottom:20px">{{ r.pdf_name }}, uploaded {{ r.created|nice_date(True) }} by {{ r.user_name }}</p>
+<a class="crumb" href="/">&larr; All alerts</a>
 
 {% if r.status in ('queued','running') %}
-<div class="sheet pad" aria-live="polite">
-  <strong id="phase">{% if r.status == 'queued' %}Waiting to start{% else %}Checking Companies House{% endif %}</strong>
+<div class="page-head"><div><h1 class="display">{% if r.alert_date %}Alert of {{ r.alert_date|nice_date }}{% else %}{{ r.pdf_name }}{% endif %} <span class="pill blue">Processing</span></h1>
+<p class="meta">{{ r.pdf_name }} · uploaded {{ r.created|nice_date(True) }} by {{ r.user_name }}</p></div></div>
+<div class="card pad" aria-live="polite">
+  <b id="phase">{% if r.status == 'queued' %}Waiting to start{% else %}Checking Companies House{% endif %}</b>
   <div class="progress"><i id="fill"></i></div>
   <div class="small" id="cur">{{ p.current if p else 'Reading the PDF' }}</div>
 </div>
@@ -45,7 +57,7 @@
     if(j.status==='done'||j.status==='failed'){location.reload();return}
     var p=j.progress;
     if(p){
-      document.getElementById('phase').textContent=p.total?('Checking Companies House: '+p.done+' of '+p.total):'Checking filings and premises';
+      document.getElementById('phase').textContent=p.total?('Checking Companies House: '+p.done+' of '+p.total):'Checking the Gazette, insolvency history and premises';
       document.getElementById('fill').style.width=p.total?Math.max(3,100*p.done/p.total)+'%':'96%';
       document.getElementById('cur').textContent=p.current||'';
     }
@@ -55,78 +67,106 @@
 </script>
 
 {% elif r.status == 'failed' %}
+<div class="page-head"><div><h1 class="display">{{ r.pdf_name }} <span class="pill red">Failed</span></h1>
+<p class="meta">Uploaded {{ r.created|nice_date(True) }} by {{ r.user_name }}</p></div></div>
 <div class="notice bad">{{ r.error }}</div>
-<a class="btn quiet" href="/">Upload again</a>
+<a class="btn ghost" href="/">Upload again</a>
 
 {% else %}{% set s = r.s %}
+{% set rows = s.rows or [] %}
+{% set unresolved_refs = s.unresolved|map(attribute='case_ref')|list %}
+{% set n_multi = rows|selectattr('multiple','equalto','Yes')|list|length %}
+{% set n_charge = rows|rejectattr('charges','in',['','No charges','No outstanding charges'])|list|length %}
+{% set n_prem = rows|selectattr('postcode')|list|length %}
+<div class="page-head">
+  <div>
+    <h1 class="display">{% if r.alert_date %}Alert of {{ r.alert_date|nice_date }}{% else %}{{ r.pdf_name }}{% endif %}
+      {% if s.validation_failures or not s.extraction_complete %}<span class="pill red">Check workbook</span>{% elif s.unresolved %}<span class="pill amber">{{ s.unresolved|length }} to check</span>{% else %}<span class="pill green">Complete</span>{% endif %}</h1>
+    <p class="meta">{{ r.pdf_name }} · uploaded {{ r.created|nice_date(True) }} by {{ r.user_name }}</p>
+  </div>
+  <div class="row">
+    <a class="btn ghost" href="/runs/{{ r.id }}/download/register">Register CSV</a>
+    <a class="btn" href="/runs/{{ r.id }}/download/xlsx">Download workbook</a>
+  </div>
+</div>
+
 {% if s.validation_failures %}
-<div class="notice bad"><strong>Check before using this workbook.</strong> The automatic checks found:{% for f in s.validation_failures %}<br>{{ f }}{% endfor %}</div>
+<div class="notice bad"><b>Check before using this workbook.</b> The automatic checks found:{% for f in s.validation_failures %}<br>{{ f }}{% endfor %}</div>
 {% elif not s.extraction_complete %}
-<div class="notice bad">Only {{ s.records }} of the {{ s.raw_refs }} case references in the PDF were extracted.</div>
-{% elif s.unresolved %}
-<div class="notice">All {{ s.records }} cases were extracted. {{ s.unresolved|length }} {{ 'needs' if s.unresolved|length == 1 else 'need' }} a manual SIC check, shown under "Needs checking".</div>
+<div class="notice bad">Only {{ s.records }} of the {{ s.raw_refs }} cases in the PDF were extracted.</div>
 {% endif %}
 
-<ul class="facts">
-  <li><b>{{ s.records }}</b>cases</li>
-  <li><b>{{ s.sic_verified }}</b>of {{ s.companies }} companies with SIC codes</li>
-  <li><b>{{ s.rows|selectattr('multiple','equalto','Yes')|list|length }}</b>with earlier filings</li>
-  <li><b>{{ s.individuals }}</b>{{ 'individual' if s.individuals == 1 else 'individuals' }}</li>
-</ul>
-<div class="actions">
-  <a class="btn" href="/runs/{{ r.id }}/download/xlsx">Download workbook</a>
-  <a class="btn quiet" href="/runs/{{ r.id }}/download/register">Download working register (CSV)</a>
+<div class="tiles">
+  <div class="card tile"><b>{{ s.records }}<small> / {{ s.raw_refs }}</small></b><span>cases extracted</span></div>
+  <div class="card tile"><b>{{ s.sic_verified }}<small> / {{ s.companies }}</small></b><span>companies with SIC codes</span></div>
+  <div class="card tile"><b>{{ n_multi }}</b><span>with earlier filings</span></div>
+  <div class="card tile"><b>{{ n_charge }}</b><span>with charge holders</span></div>
 </div>
 
-{% if s.rows %}
-{% set n_multi = s.rows|selectattr('multiple','equalto','Yes')|list|length %}
-{% set n_charge = s.rows|rejectattr('charges','in',['','No charges','No outstanding charges'])|list|length %}
-{% set n_check = s.unresolved|length %}
-<h2 style="margin-top:8px">Cases</h2>
-<div class="tabs" role="group" aria-label="Filter cases">
-  <button type="button" data-f="all" aria-pressed="true">All<span>{{ s.rows|length }}</span></button>
-  <button type="button" data-f="multi" aria-pressed="false">Earlier filings<span>{{ n_multi }}</span></button>
-  <button type="button" data-f="charge" aria-pressed="false">Has charges<span>{{ n_charge }}</span></button>
-  <button type="button" data-f="check" aria-pressed="false">Needs checking<span>{{ n_check }}</span></button>
+{% if s.unresolved %}
+<h2 class="section" style="margin-top:0">Needs checking</h2>
+<div class="tickets">
+  {% for u in s.unresolved %}
+  <div class="card ticket {{ 'grey' if u.status == 'Verified' else '' }}">
+    <div>
+      <div class="kind">{{ u.case_ref }} · {{ 'No SIC on record' if u.status == 'Verified' else u.status }}</div>
+      <div class="what">{{ u.subject }}</div>
+      <div class="why">{{ u.reason }}</div>
+    </div>
+  </div>
+  {% endfor %}
 </div>
-<div class="sheet scroll">
-<table class="ledger">
+{% endif %}
+
+{% if rows %}
+<h2 class="section" style="margin-top:0">All cases</h2>
+<div class="chips" role="group" aria-label="Filter cases">
+  <button type="button" class="chip" data-f="all" aria-pressed="true">All <span>{{ rows|length }}</span></button>
+  <button type="button" class="chip" data-f="multi" aria-pressed="false">Earlier filings <span>{{ n_multi }}</span></button>
+  <button type="button" class="chip" data-f="charge" aria-pressed="false">Has charges <span>{{ n_charge }}</span></button>
+  {% if n_prem %}<button type="button" class="chip" data-f="prem" aria-pressed="false">Premises found <span>{{ n_prem }}</span></button>{% endif %}
+  <button type="button" class="chip" data-f="check" aria-pressed="false">Needs checking <span>{{ s.unresolved|length }}</span></button>
+</div>
+<div class="card scroll">
+<table class="grid ledger">
   <thead><tr><th>Case</th><th>Subject</th><th>Filing</th><th>SIC</th><th>Charge holders</th></tr></thead>
   <tbody>
-  {% set unresolved_refs = s.unresolved|map(attribute='case_ref')|list %}
-  {% for x in s.rows %}
+  {% for x in rows %}
   {% set has_charge = x.charges and x.charges not in ['No charges','No outstanding charges'] %}
-  <tr data-multi="{{ 1 if x.multiple == 'Yes' else 0 }}" data-charge="{{ 1 if has_charge else 0 }}" data-check="{{ 1 if x.ref in unresolved_refs else 0 }}">
+  <tr data-multi="{{ 1 if x.multiple == 'Yes' else 0 }}" data-charge="{{ 1 if has_charge else 0 }}" data-prem="{{ 1 if x.postcode else 0 }}" data-check="{{ 1 if x.ref in unresolved_refs else 0 }}">
     <td class="ref">{{ x.ref }}</td>
     <td><div class="subj">{{ x.subject }}</div>
-      <div class="row" style="gap:6px;margin-top:4px">
-        {% if x.kind == 'individual' %}<span class="chip">Individual</span>
-        {% elif x.ref in unresolved_refs %}<span class="chip warn">{{ 'No SIC listed' if x.status == 'Verified' else x.status }}</span>{% if x.number %}<span class="chip">{{ x.number }}</span>{% endif %}
-        {% elif x.number %}<span class="chip ok">{{ x.number }}</span>{% endif %}
-        {% if x.multiple == 'Yes' %}<span class="chip seal">Earlier filings</span>{% endif %}
-        {% if x.trading %}<span class="chip">{{ x.trading }}{% if x.postcode %}, {{ x.postcode }}{% endif %}</span>{% endif %}
+      <div class="tags">
+        {% if x.kind == 'individual' %}<span class="pill grey">Individual</span>
+        {% elif x.number %}<span class="pill {{ 'amber' if x.ref in unresolved_refs else 'green' }}">{{ x.number }}</span>
+        {% elif x.ref in unresolved_refs %}<span class="pill amber">{{ x.status }}</span>{% endif %}
+        {% if x.multiple == 'Yes' %}<span class="pill red">Earlier filings</span>{% endif %}
+        {% if x.trading or x.postcode %}<span class="pill blue">{{ x.trading }}{% if x.trading and x.postcode %}, {% endif %}{{ x.postcode }}</span>{% endif %}
       </div>
       {% if x.notes %}<details><summary>Notes</summary><p>{{ x.notes }}</p></details>{% endif %}
     </td>
     <td data-l="Filing">{{ x.filing }}{% if x.petitioner %}<div class="small">{{ x.petitioner }}</div>{% endif %}</td>
-    <td data-l="SIC" class="sic">{% if x.sic %}{% for code in x.sic.split(';') %}<div title="{{ x.sic_desc.split(';')[loop.index0] }}">{{ code }} <span class="small hide-s">{{ x.sic_desc.split(';')[loop.index0]|truncate(32) }}</span></div>{% endfor %}{% else %}<span class="small">–</span>{% endif %}</td>
-    <td data-l="Charges">{% if has_charge %}{{ x.charges }}{% else %}<span class="small">{{ x.charges or '–' }}</span>{% endif %}</td>
+    <td data-l="SIC" class="sic">{% if x.sic %}{% set descs = x.sic_desc.split(';') %}{% for code in x.sic.split(';') %}<div title="{{ descs[loop.index0] }}">{{ code }} <span class="small hide-s">{{ descs[loop.index0]|truncate(30) }}</span></div>{% endfor %}{% else %}<span class="small">None</span>{% endif %}</td>
+    <td data-l="Charges">{% if has_charge %}{{ x.charges }}{% else %}<span class="small">{{ x.charges or 'Not checked' }}</span>{% endif %}</td>
   </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
-<p class="small" style="margin-top:14px">Postcode and trading name are only filled when the FSA hygiene register matches the company name at its registered postcode. IBIS columns are left for you.</p>
+<p class="small" style="margin-top:12px">Postcode and trading name are filled only when the FSA hygiene register lists the company's exact name at its registered postcode. IBIS columns are left for you.</p>
 <script>
 (function(){
-  var btns=document.querySelectorAll('.tabs button'),rows=document.querySelectorAll('.ledger tbody tr');
-  btns.forEach(function(b){b.addEventListener('click',function(){
-    btns.forEach(function(o){o.setAttribute('aria-pressed',o===b?'true':'false')});
-    var f=b.dataset.f;
+  var btns=document.querySelectorAll('.chip'),rows=document.querySelectorAll('.ledger tbody tr');
+  function apply(f){
+    btns.forEach(function(o){o.setAttribute('aria-pressed',o.dataset.f===f?'true':'false')});
     rows.forEach(function(r){r.hidden=!(f==='all'||r.dataset[f]==='1')});
-  })});
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);history.replaceState(null,'',b.dataset.f==='all'?location.pathname:'#'+b.dataset.f)})});
+  var h=location.hash.slice(1); if(h&&document.querySelector('.chip[data-f="'+h+'"]')){apply(h);document.querySelector('.chips').scrollIntoView();}
 })();
 </script>
+{% else %}
+<p class="muted">This alert was processed by an earlier version, so the case list isn't available here. Download the workbook to see every case.</p>
 {% endif %}
 {% endif %}
 {% endblock %}

@@ -1,22 +1,29 @@
 {% extends "base.html" %}
 {% block title %}{% if reset %}Set password{% else %}Create account{% endif %} · {{ app_name }}{% endblock %}
+{% block head %}<style>
+.auth{max-width:448px;margin:9vh auto 0}
+.auth .card{padding:32px}
+.auth img{height:40px;width:auto;display:block}
+.auth h1{font-size:32px;margin:18px 0 6px}
+</style>{% endblock %}
 {% block body %}
-<div style="max-width:420px;margin:40px 0">
-  <h1>{% if reset %}Set your password{% else %}Create your account{% endif %}</h1>
-  <p class="lede">For {{ inv.email }}</p>
+<div class="auth">
   {% if error %}<div class="notice bad">{{ error }}</div>{% endif %}
-  <form class="sheet pad" method="post">
+  <form class="card" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <img src="/static/christie-logo.svg" alt="Christie &amp; Co">
+    <h1 class="display">{% if reset %}Set your password{% else %}Welcome to {{ app_name }}{% endif %}</h1>
+    <p class="meta">{% if reset %}For {{ inv.email }}{% else %}Create your account for {{ inv.email }}{% endif %}</p>
     {% if not reset %}
-    <label for="name" style="margin-top:0">Your name</label>
+    <label for="name">Your name</label>
     <input id="name" name="name" type="text" autocomplete="name" required value="{{ name or '' }}">
     {% endif %}
-    <label for="password" {% if reset %}style="margin-top:0"{% endif %}>Password</label>
+    <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="pwhint">
     <p class="small" id="pwhint" style="margin:6px 0 0">At least 10 characters.</p>
     <label for="password2">Confirm password</label>
     <input id="password2" name="password2" type="password" autocomplete="new-password" minlength="10" required>
-    <div style="margin-top:22px"><button class="btn" style="width:100%">{% if reset %}Save password{% else %}Create account{% endif %}</button></div>
+    <div style="margin-top:20px"><button class="btn">{% if reset %}Save password{% else %}Create account{% endif %}</button></div>
   </form>
 </div>
 {% endblock %}
