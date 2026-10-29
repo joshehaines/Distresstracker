@@ -93,6 +93,18 @@ def stop(jid):
         c.execute("UPDATE bulk_jobs SET status='stopped' WHERE id=? AND status='queued'", (jid,))
 
 
+def delete(jid) -> bool:
+    """Remove a run that isn't working: its files and its row."""
+    j = get(jid)
+    if not j or j["status"] in ("running", "queued"):
+        return False
+    import shutil
+    shutil.rmtree(folder(jid), ignore_errors=True)
+    with db.conn() as c:
+        c.execute("DELETE FROM bulk_jobs WHERE id=?", (jid,))
+    return True
+
+
 def resume(jid):
     _stop.discard(jid)
     update(jid, status="queued", error=None)

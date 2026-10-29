@@ -495,6 +495,8 @@ def bulk_action(request: Request, jid: str, action: str, csrf_token: str = Form(
         bulk.stop(jid)
     elif action == "resume":
         bulk.resume(jid)
+    elif action == "delete":
+        request.session["notice"] = "Run deleted." if bulk.delete(jid) else "Pause a run before deleting it."
     return RedirectResponse("/admin/bulk", 303)
 
 

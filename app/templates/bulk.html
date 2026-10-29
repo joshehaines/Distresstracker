@@ -26,7 +26,7 @@
     <p class="meta">Adds practitioners, their firm and unsatisfied charge holders to every company on the sheet.</p>
   </div>
 </div>
-{% if notice %}<div class="notice {{ 'ok' if notice.startswith('Started') else 'bad' }}">{{ notice }}</div>{% endif %}
+{% if notice %}<div class="notice {{ 'ok' if notice.startswith('Started') or notice.startswith('Run deleted') else 'bad' }}">{{ notice }}</div>{% endif %}
 
 <ul class="how">
   <li>Practitioners come from Companies House, latest case, as first and last name. Where the Gazette spells the first name differently, its spelling is used.</li>
@@ -78,6 +78,9 @@
       {% else %}
       <form class="inline" method="post" action="/admin/bulk/{{ j.id }}/resume" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn">Resume</button></form>
       {% endif %}
+      {% endif %}
+      {% if j.status not in ('running','queued') %}
+      <form class="inline" method="post" action="/admin/bulk/{{ j.id }}/delete" style="display:inline;margin:0" onsubmit="return confirm('Delete this run and its files?')"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn ghost">Delete</button></form>
       {% endif %}
     </div>
   </article>
