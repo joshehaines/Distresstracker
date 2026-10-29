@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Insolvency sheet · {{ app_name }}{% endblock %}
+{% block head %}<style>
+.how{margin:0 0 20px;padding-left:18px;color:var(--muted);font-size:14.5px;max-width:78ch}
+.how li{margin:3px 0}
+.form{display:grid;grid-template-columns:1fr 1fr auto;gap:12px 20px;align-items:end;padding:18px 20px}
+.form label{margin-top:0}
+@media (max-width:860px){.form{grid-template-columns:1fr}}
+.jobs{display:flex;flex-direction:column;gap:12px}
+.job{padding:16px 18px}
+.job-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.job-head h3{margin:0;font-family:var(--font-brand);font-size:21px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.job-head h3 .pill{font-family:var(--font-ui);font-size:12.5px}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:12px 0 8px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .6s}
+.job .meta{margin:0}
+.job .row{margin-top:12px}
+.statline{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:14px;margin-top:8px}
+.statline b{font-weight:700}
+.empty{padding:28px 20px;color:var(--muted);text-align:center}
+</style>{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Fill insolvency sheet</h1>
+    <p class="meta">Adds practitioners, their firm and unsatisfied charge holders to every company on the sheet.</p>
+  </div>
+</div>
+{% if notice %}<div class="notice {{ 'ok' if notice.startswith('Started') else 'bad' }}">{{ notice }}</div>{% endif %}
+
+<ul class="how">
+  <li>Practitioners come from Companies House, latest case, as first and last name. Where the Gazette spells the first name differently, its spelling is used.</li>
+  <li>The firm is the first practitioner's, from the Gazette appointment notice.</li>
+  <li>Charge holders are outstanding charges at Companies House, duplicates removed.</li>
+  <li>Only blank cells are filled, so anything typed by hand stays. Around 0.8 companies a second, which is roughly 12 hours for 36,000. It runs on the server, so you can close this page.</li>
+</ul>
+
+<form class="card form" method="post" action="/admin/bulk" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <div><label for="workbook">Sheet (.xlsx with a Company Number column)</label><input id="workbook" name="workbook" type="file" accept=".xlsx" required></div>
+  <div><label for="progress_file">Progress file, if continuing a run <span class="small">(optional)</span></label><input id="progress_file" name="progress_file" type="file" accept=".jsonl,.json,.txt"></div>
+  <button class="btn">Start filling</button>
+</form>
+
+<h2 class="section">Runs</h2>
+{% if jobs %}
+<div class="jobs">
+{% for j in jobs %}
+  {% set pct = (100 * j.done / j.total) if j.total else 0 %}
+  <article class="card job" data-id="{{ j.id }}" data-status="{{ j.status }}">
+    <div class="job-head">
+      <h3>{{ j.filename }}
+        {% if j.status == 'done' %}<span class="pill green">Complete</span>
+        {% elif j.status == 'running' %}<span class="pill blue">Running</span>
+        {% elif j.status == 'queued' %}<span class="pill grey">Queued</span>
+        {% elif j.status == 'stopped' %}<span class="pill amber">Stopped</span>
+        {% else %}<span class="pill red">Failed</span>{% endif %}</h3>
+      <span class="small">Started {{ j.created|nice_date(True) }}{% if j.user_name %} by {{ j.user_name }}{% endif %}</span>
+    </div>
+    <div class="bar"><i style="width:{{ '%.1f'|format(pct) }}%"></i></div>
+    <p class="meta"><span class="js-done">{{ '{:,}'.format(j.done) }}</span> of {{ '{:,}'.format(j.total) }} companies ({{ '%.0f'|format(pct) }}%){% if j.hours_left %} · about {{ j.hours_left }} hours left{% endif %}{% if j.status == 'done' and j.finished %} · finished {{ j.finished|nice_date(True) }}{% endif %}</p>
+    {% if j.error %}<div class="notice bad" style="margin:10px 0 0">{{ j.error }}</div>{% endif %}
+    {% if j.stats %}
+    <div class="statline">
+      <span><b>{{ '{:,}'.format(j.stats.get('with practitioners', 0)) }}</b> with practitioners</span>
+      <span><b>{{ '{:,}'.format(j.stats.get('with firm', 0)) }}</b> with firm</span>
+      <span><b>{{ '{:,}'.format(j.stats.get('with charge holders', 0)) }}</b> with charge holders</span>
+    </div>
+    {% endif %}
+    <div class="row">
+      {% if j.status == 'done' %}
+      <a class="btn" href="/admin/bulk/{{ j.id }}/download/xlsx">Download filled sheet</a>
+      <a class="btn ghost" href="/admin/bulk/{{ j.id }}/download/sources">Sources (CSV)</a>
+      {% else %}
+      <a class="btn ghost" href="/admin/bulk/{{ j.id }}/download/xlsx?partial=1" data-slow>Download progress so far</a>
+      {% if j.status in ('running','queued') %}
+      <form class="inline" method="post" action="/admin/bulk/{{ j.id }}/stop" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn ghost">Pause</button></form>
+      {% else %}
+      <form class="inline" method="post" action="/admin/bulk/{{ j.id }}/resume" style="display:inline;margin:0"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="btn">Resume</button></form>
+      {% endif %}
+      {% endif %}
+    </div>
+  </article>
+{% endfor %}
+</div>
+{% else %}
+<div class="card empty">No runs yet. Upload the sheet above to start.</div>
+{% endif %}
+<script>
+document.querySelectorAll('[data-slow]').forEach(function(a){a.addEventListener('click',function(){a.textContent='Preparing file… (up to a minute)'})});
+(function poll(){
+  var live=document.querySelectorAll('.job[data-status=running],.job[data-status=queued]');
+  if(!live.length) return;
+  setTimeout(function(){
+    Promise.all([].map.call(live,function(el){return fetch('/admin/bulk/'+el.dataset.id+'/status',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(j){
+      if(j.status!==el.dataset.status){location.reload();return}
+      el.querySelector('.js-done').textContent=j.done.toLocaleString('en-GB');
+      el.querySelector('.bar i').style.width=(100*j.done/j.total).toFixed(1)+'%';
+    })})).finally(poll);
+  },10000);
+})();
+</script>
+{% endblock %}

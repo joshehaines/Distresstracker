@@ -122,7 +122,8 @@ table.grid tr:last-child td{border-bottom:0}
     </a>
     <nav class="topnav" aria-label="Main">
       <a href="/" {% if request.url.path == '/' or request.url.path.startswith('/runs') %}aria-current="page"{% endif %}>Alerts</a>
-      {% if user.is_admin %}<a href="/admin" {% if request.url.path.startswith('/admin') %}aria-current="page"{% endif %}>Team</a>{% endif %}
+      {% if user.is_admin %}<a href="/admin/bulk" {% if request.url.path.startswith('/admin/bulk') %}aria-current="page"{% endif %}>Insolvency sheet</a>
+      <a href="/admin" {% if request.url.path == '/admin' %}aria-current="page"{% endif %}>Team</a>{% endif %}
     </nav>
     <div class="who">
       <span class="hello">Welcome, <b>{{ user.name.split(' ')[0] }}</b></span>

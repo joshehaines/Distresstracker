@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import shutil
+import threading
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +21,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import db
+from .bulk import fetch as bulk_fetch
+from .bulk import job as bulk
 from .pipeline import run as run_pipeline
 from .workbook import HEADERS
 
@@ -63,6 +66,7 @@ _fails: dict[str, list[float]] = defaultdict(list)
 @app.on_event("startup")
 def startup():
     db.init()
+    bulk.init()
     email = os.environ.get("ADMIN_EMAIL")
     if os.environ.get("ADMIN_PASSWORD"):
         db.ensure_admin(email, os.environ["ADMIN_PASSWORD"], os.environ.get("ADMIN_NAME", "Administrator"))
@@ -303,7 +307,19 @@ async def create_run(request: Request, pdf: UploadFile = File(...), template: Up
     return RedirectResponse(f"/runs/{rid}", 303)
 
 
+_busy = {"n": 0}
+_busy_lock = threading.Lock()
+
+
+def _alerts_busy(delta):
+    """While an alert is processing, the bulk sheet fill slows right down so the alert gets the API."""
+    with _busy_lock:
+        _busy["n"] = max(0, _busy["n"] + delta)
+        (bulk_fetch.ALERTS_BUSY.set if _busy["n"] else bulk_fetch.ALERTS_BUSY.clear)()
+
+
 def _work(rid: str, rdir: Path, tmpl: Path):
+    _alerts_busy(+1)
     db.update_run(rid, status="running")
 
     def prog(done, total, case):
@@ -322,6 +338,7 @@ def _work(rid: str, rdir: Path, tmpl: Path):
         db.update_run(rid, status="failed", error=f"{type(e).__name__}: {e}")
     finally:
         progress.pop(rid, None)
+        _alerts_busy(-1)
 
 
 def _own_run(request: Request, rid: str):
@@ -423,6 +440,84 @@ def admin_template_download(request: Request):
     if not TEMPLATE_PATH.exists():
         raise HTTPException(404)
     return FileResponse(TEMPLATE_PATH, filename="Case Alerts - template.xlsx")
+
+
+# ---- insolvency sheet fill (admin) ---------------------------------------------
+@app.get("/admin/bulk", response_class=HTMLResponse)
+def bulk_page(request: Request):
+    need_admin(request)
+    jobs = []
+    for j in bulk.all_jobs():
+        d = dict(j)
+        d["stats"] = json.loads(j["stats"]) if j["stats"] else None
+        left = (d["total"] - d["done"]) / d["rate"] / 3600 if d.get("rate") and d["status"] == "running" else None
+        d["hours_left"] = round(left, 1) if left is not None else None
+        jobs.append(d)
+    return page(request, "bulk.html", jobs=jobs, notice=request.session.pop("notice", None))
+
+
+@app.post("/admin/bulk")
+async def bulk_create(request: Request, workbook: UploadFile = File(...), progress_file: UploadFile | None = File(None),
+                      csrf_token: str = Form("")):
+    u = need_admin(request)
+    check_csrf(request, csrf_token)
+    data = await workbook.read()
+    if not data[:2] == b"PK" or len(data) > 40 * 1024 * 1024:
+        request.session["notice"] = "Upload the sheet as an .xlsx file (max 40 MB)."
+        return RedirectResponse("/admin/bulk", 303)
+    prog = None
+    if progress_file is not None and progress_file.filename:
+        prog = await progress_file.read()
+    try:
+        bulk.create(u["id"], workbook.filename or "sheet.xlsx", data, prog)
+        request.session["notice"] = "Started. You can leave this page; it carries on in the background."
+    except ValueError as e:
+        request.session["notice"] = str(e)
+    return RedirectResponse("/admin/bulk", 303)
+
+
+@app.get("/admin/bulk/{jid}/status")
+def bulk_status(request: Request, jid: str):
+    need_admin(request)
+    j = bulk.get(jid)
+    if not j:
+        raise HTTPException(404)
+    return JSONResponse({k: j[k] for k in ("status", "total", "done", "rate", "error")})
+
+
+@app.post("/admin/bulk/{jid}/{action}")
+def bulk_action(request: Request, jid: str, action: str, csrf_token: str = Form("")):
+    need_admin(request)
+    check_csrf(request, csrf_token)
+    if not bulk.get(jid):
+        raise HTTPException(404)
+    if action == "stop":
+        bulk.stop(jid)
+    elif action == "resume":
+        bulk.resume(jid)
+    return RedirectResponse("/admin/bulk", 303)
+
+
+@app.get("/admin/bulk/{jid}/download/{kind}")
+def bulk_download(request: Request, jid: str, kind: str, partial: int = 0):
+    need_admin(request)
+    j = bulk.get(jid)
+    if not j or kind not in ("xlsx", "sources"):
+        raise HTTPException(404)
+    stem = Path(j["filename"] or "sheet.xlsx").stem
+    if j["status"] == "done" and not partial:
+        d = bulk.folder(jid)
+        out, log_csv = d / "filled.xlsx", d / "filled-sources.csv"
+        if not out.exists():
+            out, log_csv, _ = bulk.build_output(jid)
+        label = "filled"
+    else:
+        out, log_csv, _ = bulk.build_output(jid, partial=True)
+        label = f"partial {j['done']} of {j['total']}"
+    if kind == "xlsx":
+        return FileResponse(out, filename=f"{stem} ({label}).xlsx",
+                            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return FileResponse(log_csv, filename=f"{stem} sources ({label}).csv", media_type="text/csv")
 
 
 @app.get("/healthz")
