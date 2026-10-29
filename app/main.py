@@ -97,6 +97,21 @@ def startup():
             token = db.make_invite(addr, admin["id"] if admin else 0, kind="invite", days=7)
             f.write_text(token)
         print(f"INVITE LINK {addr}: {(BASE_URL or '')}/invite/{token}", flush=True)
+    # Password resets requested by the owner through RESET_EMAILS (comma separated).
+    # One stable single-use link per address, logged at start-up; no password is ever set here.
+    reset_dir = db.DATA / "reset-tokens"
+    reset_dir.mkdir(exist_ok=True)
+    for addr in [a.strip().lower() for a in os.environ.get("RESET_EMAILS", "").split(",") if a.strip()]:
+        u = db.user_by_email(addr)
+        if not u:
+            print(f"RESET: no account for {addr}", flush=True)
+            continue
+        f = reset_dir / addr
+        token = f.read_text().strip() if f.exists() else ""
+        if not token or not db.get_invite(token):
+            token = db.make_invite(addr, u["id"], kind="reset", days=2)
+            f.write_text(token)
+        print(f"RESET LINK {addr}: {(BASE_URL or '')}/invite/{token}", flush=True)
     # runs interrupted by a restart
     for r in db.list_runs(limit=1000):
         if r["status"] in ("queued", "running"):
